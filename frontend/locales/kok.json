@@ -1,0 +1,22 @@
+{
+  "nav.planTrip": "Langthang Plan",
+  "nav.liveNetwork": "Live Network",
+  "nav.myTrip": "Ani Langthang",
+  "nav.facilities": "Suvidha",
+  "nav.alerts": "Alert",
+  "nav.help": "Sahajya",
+  "nav.feedback": "Feedback",
+  "nav.login": "Login",
+  "nav.signup": "Sign Up",
+  "nav.logout": "Logout",
+  "plan.title": "Langthang Plan",
+  "plan.vehicle": "Gari",
+  "plan.origin": "Aro Jaga",
+  "plan.destination": "Bale Jaga",
+  "plan.calculate": "Route Thaboi",
+  "live.title": "Live Network",
+  "alerts.title": "NER Alert",
+  "feedback.title": "Feedback",
+  "common.loading": "Loading...",
+  "common.close": "Band"
+}

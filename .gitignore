@@ -1,0 +1,10 @@
+.env
+node_modules/
+__pycache__/
+*.pyc
+.env.local
+.env.production
+dist/
+.DS_Store
+ml/model/saved/*.pkl
+ml/model/saved/*.joblib

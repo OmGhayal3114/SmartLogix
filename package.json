@@ -1,0 +1,11 @@
+{
+  "name": "ner-smartlogix",
+  "version": "1.0.0",
+  "description": "NER Logistics Intelligence Platform",
+  "scripts": {
+    "backend": "cd backend && npm start",
+    "backend:dev": "cd backend && npm run dev",
+    "ml": "cd ml && uvicorn app:app --reload --port 8000",
+    "frontend": "cd frontend && npx serve . -p 3000"
+  }
+}

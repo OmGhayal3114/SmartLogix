@@ -1,0 +1,23 @@
+{
+  "nav.planTrip": "Leit ia Pyrthei",
+  "nav.liveNetwork": "Live Network",
+  "nav.myTrip": "Ka Jinglieh Jong Nga",
+  "nav.facilities": "Ki Sdang",
+  "nav.alerts": "Ki Alert",
+  "nav.help": "Bynta bad Shibun",
+  "nav.feedback": "Feedback",
+  "nav.login": "Login",
+  "nav.signup": "Sign Up",
+  "nav.logout": "Logout",
+  "plan.title": "Leit ia Pyrthei",
+  "plan.vehicle": "Wah Kynmaw",
+  "plan.origin": "Jingstad",
+  "plan.destination": "Jingstad Jong Leit",
+  "plan.calculate": "Mantre ia Route",
+  "live.title": "Live Network",
+  "facilities.title": "Ki Sdang Kynmaw",
+  "alerts.title": "NER Alert",
+  "feedback.title": "Feedback",
+  "common.loading": "Loading...",
+  "common.close": "Leit"
+}

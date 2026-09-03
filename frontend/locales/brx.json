@@ -1,0 +1,22 @@
+{
+  "nav.planTrip": "Saorog Nanget Bijangnai",
+  "nav.liveNetwork": "Live Network",
+  "nav.myTrip": "Boro Saorog",
+  "nav.facilities": "Subidhani",
+  "nav.alerts": "Alert",
+  "nav.help": "Sahajya",
+  "nav.feedback": "Feedback",
+  "nav.login": "Login",
+  "nav.signup": "Sign Up",
+  "nav.logout": "Logout",
+  "plan.title": "Saorog Nanget Bijangnai",
+  "plan.vehicle": "Gari",
+  "plan.origin": "Nanget Jaga",
+  "plan.destination": "Gantabya Jaga",
+  "plan.calculate": "Route Calculate Kor",
+  "live.title": "Live Network",
+  "alerts.title": "NER Alert",
+  "feedback.title": "Feedback",
+  "common.loading": "Loading...",
+  "common.close": "Band Kor"
+}

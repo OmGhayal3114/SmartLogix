@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NER SmartLogix — Logistics Intelligence Platform</title>
+  <meta name="description" content="NER Logistics Intelligence Platform for the North Eastern Region of India. Real-time route planning, risk assessment, alerts, and facilities.">
+
+  <!-- Preconnect to Google APIs (actual script loaded dynamically by maps.js after fetching key from backend) -->
+  <link rel="preconnect" href="https://maps.googleapis.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/css/main.css">
+
+  <style>
+    /* Inline critical loading state */
+    #splash {
+      position: fixed;
+      inset: 0;
+      background: #0b0f1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    .splash-logo { color: #5eead4; font-size: 48px; }
+    .splash-title { color: #e8edf5; font-size: 22px; font-weight: 700; font-family: Inter, system-ui, sans-serif; }
+    .splash-sub { color: #64748b; font-size: 13px; font-family: Inter, system-ui, sans-serif; }
+    .splash-bar {
+      width: 200px;
+      height: 2px;
+      background: #ffffff0c;
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .splash-progress {
+      height: 100%;
+      background: #5eead4;
+      border-radius: 1px;
+      animation: progress 1.2s ease forwards;
+    }
+    @keyframes progress { from { width: 0; } to { width: 100%; } }
+  </style>
+</head>
+
+<body>
+
+  <!-- Splash screen -->
+  <div id="splash">
+    <div class="splash-logo">◉</div>
+    <div class="splash-title">NER SmartLogix</div>
+    <div class="splash-sub">Logistics Intelligence Platform</div>
+    <div class="splash-bar"><div class="splash-progress"></div></div>
+  </div>
+
+  <!-- App root — entire SPA renders here -->
+  <div id="app"></div>
+
+  <!-- Entry point (ES module) -->
+  <script type="module" src="/js/app.js"></script>
+
+  <script>
+    // Hide splash after app renders
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splash');
+        if (splash) {
+          splash.classList.add('hidden');
+          setTimeout(() => splash.remove(), 500);
+        }
+      }, 1400);
+    });
+  </script>
+
+</body>
+</html>
