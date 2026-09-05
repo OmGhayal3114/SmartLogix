@@ -12,7 +12,7 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json({ error: 'Invalid ID format.' });
   }
   const status = err.statusCode || err.status || 500;
-  const message = status === 500 ? 'Something went wrong. Please try again later.' : err.message;
+  const message = err.message || 'Something went wrong. Please try again later.';
   res.status(status).json({ error: message });
 };
 

@@ -2,7 +2,8 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
 
-const signToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+const JWT_SECRET = process.env.JWT_SECRET || 'ner_smartlogix_super_secret_jwt_key_2026';
+const signToken = (id) => jwt.sign({ id }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
 exports.signup = async (req, res, next) => {
   try {

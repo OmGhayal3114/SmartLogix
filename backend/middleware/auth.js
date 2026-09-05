@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const JWT_SECRET = process.env.JWT_SECRET || 'ner_smartlogix_super_secret_jwt_key_2026';
 
 exports.protect = async (req, res, next) => {
   try {
@@ -10,7 +11,7 @@ exports.protect = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({ error: 'Please log in to access this resource.' });
     }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.id);
     if (!user) {
       return res.status(401).json({ error: 'User no longer exists.' });
