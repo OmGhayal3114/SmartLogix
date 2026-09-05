@@ -122,8 +122,6 @@ Enable these APIs in [Google Cloud Console](https://console.cloud.google.com/api
 | Places API | Nearby facilities search |
 | Geocoding API | City name → coordinates |
 
-Your API key (---) is stored in `.env` and **never sent to the browser**. It is served via `/api/config/maps-key` which returns the key for Google Maps to load.
-
 ---
 
 ## Features
