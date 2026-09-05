@@ -36,16 +36,17 @@ app.use('/api/', limiter);
 let cachedDbPromise = null;
 async function ensureDbConnected() {
   if (mongoose.connection.readyState === 1) return;
-  if (!process.env.MONGODB_URI) return;
+  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set.');
   if (!cachedDbPromise) {
     cachedDbPromise = mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 8000
+      serverSelectionTimeoutMS: 5000,
+      bufferCommands: false
     }).then(() => {
       console.log('✓ MongoDB connected');
       if (!process.env.VERCEL) alertCron.start();
     }).catch(err => {
       cachedDbPromise = null;
-      console.error('MongoDB connect error:', err.message);
+      throw err;
     });
   }
   await cachedDbPromise;
@@ -58,10 +59,13 @@ app.use('/api', async (req, res, next) => {
   }
   try {
     await ensureDbConnected();
+    next();
   } catch (e) {
-    // proceed to let individual routes handle or fallback
+    console.error('[DB Error]', e.message);
+    return res.status(503).json({
+      error: 'Database connection failed: ' + e.message + '. Please ensure 0.0.0.0/0 is added to your MongoDB Atlas IP Access List.'
+    });
   }
-  next();
 });
 
 // Mount Routes
