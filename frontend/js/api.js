@@ -1,6 +1,7 @@
-// NER SmartLogix — Backend API client
-
-const BASE = 'http://localhost:5000/api';
+// Dynamic API base: localhost:5000 for local dev, /api for cloud deployment (Vercel)
+const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:5000/api'
+  : '/api';
 
 async function request(method, path, body, token) {
   const headers = { 'Content-Type': 'application/json' };
