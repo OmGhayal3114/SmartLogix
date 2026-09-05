@@ -18,7 +18,7 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || '*',
   credentials: true
 }));
 
@@ -27,11 +27,44 @@ app.use(express.urlencoded({ extended: true }));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 150,
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api/', limiter);
 
+// Serverless-friendly cached DB connection
+let cachedDbPromise = null;
+async function ensureDbConnected() {
+  if (mongoose.connection.readyState === 1) return;
+  if (!process.env.MONGODB_URI) return;
+  if (!cachedDbPromise) {
+    cachedDbPromise = mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 8000
+    }).then(() => {
+      console.log('✓ MongoDB connected');
+      if (!process.env.VERCEL) alertCron.start();
+    }).catch(err => {
+      cachedDbPromise = null;
+      console.error('MongoDB connect error:', err.message);
+    });
+  }
+  await cachedDbPromise;
+}
+
+// Ensure DB is connected before handling API routes
+app.use('/api', async (req, res, next) => {
+  if (req.path === '/health' || req.path === '/config/maps-key') {
+    return next();
+  }
+  try {
+    await ensureDbConnected();
+  } catch (e) {
+    // proceed to let individual routes handle or fallback
+  }
+  next();
+});
+
+// Mount Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/routes', routeRoutes);
@@ -42,45 +75,23 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/config', configRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    db: mongoose.connection.readyState === 1 ? 'connected' : 'connecting',
+    timestamp: new Date().toISOString()
+  });
 });
 
+// Error handler MUST be last
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-let dbConnected = false;
-
-// Middleware: block API routes (except health & config) when DB is down
-app.use('/api', (req, res, next) => {
-  const allowed = ['/api/health', '/api/config/maps-key'];
-  if (!dbConnected && !allowed.some(p => req.path.startsWith(p.replace('/api', '')))) {
-    return res.status(503).json({
-      error: 'Database not connected. Please start MongoDB and restart the server.',
-      hint: 'Run: mongod  (in a separate terminal)'
-    });
-  }
-  next();
-});
-
-// Start server immediately so health endpoint works even without MongoDB
-const server = app.listen(PORT, () => {
-  console.log(`\n◉ NER SmartLogix backend running on http://localhost:${PORT}`);
-  console.log('  Connecting to MongoDB...');
-});
-
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    dbConnected = true;
-    console.log('✓ MongoDB connected');
-    alertCron.start();
-  })
-  .catch(err => {
-    console.error('\n✗ MongoDB connection failed:', err.message);
-    console.error('  → Make sure MongoDB is running: mongod');
-    console.error('  → Or update MONGODB_URI in .env to use MongoDB Atlas\n');
-    // Server stays up — returns 503 on DB-dependent routes
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n◉ NER SmartLogix backend running on http://localhost:${PORT}`);
+    ensureDbConnected();
   });
+}
 
 module.exports = app;
-

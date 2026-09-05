@@ -11,7 +11,10 @@ window.state = state;
 // Check if backend is reachable, show banner if not
 async function checkBackend() {
   try {
-    const res = await fetch('http://localhost:5000/api/health', { signal: AbortSignal.timeout(3000) });
+    const healthUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:5000/api/health'
+      : '/api/health';
+    const res = await fetch(healthUrl, { signal: AbortSignal.timeout(4000) });
     if (!res.ok) throw new Error('unhealthy');
     return true;
   } catch (e) {
@@ -22,11 +25,12 @@ async function checkBackend() {
 function showOfflineBanner() {
   const existing = document.getElementById('offline-banner');
   if (existing) return;
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const banner = document.createElement('div');
   banner.id = 'offline-banner';
   banner.innerHTML = `
     <div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#1a0a0a;border-bottom:2px solid #ef444466;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-family:system-ui;font-size:13px;color:#fca5a5">
-      <span>⚠ &nbsp; Backend server is not running. Start it with: <code style="background:#0b0f1a;padding:2px 8px;border-radius:4px;color:#5eead4">cd C:\\smartlogix\\backend &amp;&amp; node server.js</code></span>
+      <span>⚠ &nbsp; Backend server is connecting or not reachable. ${isLocal ? 'Start it with: <code style="background:#0b0f1a;padding:2px 8px;border-radius:4px;color:#5eead4">cd C:\\smartlogix\\backend &amp;&amp; node server.js</code>' : 'Please verify cloud database connectivity.'}</span>
       <button onclick="location.reload()" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Retry</button>
     </div>`;
   document.body.prepend(banner);
