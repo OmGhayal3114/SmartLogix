@@ -1,5 +1,13 @@
 const axios = require('axios');
 const Alert = require('../models/Alert');
+const Parser = require('rss-parser');
+const crypto = require('crypto');
+
+const rssParser = new Parser({ timeout: 10000 });
+const TRUSTED_NER_FEEDS = [
+  { name: 'Indian Express North East', url: 'https://indianexpress.com/section/north-east-india/feed/' },
+  { name: 'Times of Guwahati North East', url: 'https://timesofguwahati.com/rss/category/north-east-india-news' }
+];
 
 // NER state detection patterns
 const NER_STATES = [
@@ -36,7 +44,7 @@ function detectState(text) {
   for (const s of NER_STATES) {
     if (s.patterns.some(p => lower.includes(p))) return s.name;
   }
-  return 'NER General';
+  return null;
 }
 
 function detectAlertType(text) {
@@ -89,7 +97,7 @@ async function fetchIMDAlerts() {
       response.data.forEach(item => {
         const text = (item.heading || '') + ' ' + (item.description || '') + ' ' + (item.state || '');
         const state = detectState(text);
-        if (state === 'Unknown') return;
+        if (!state) return;
         alerts.push({
           title: item.heading || 'IMD Weather Warning',
           description: item.description || '',
@@ -110,28 +118,72 @@ async function fetchIMDAlerts() {
   return alerts;
 }
 
+async function fetchTrustedNewsAlerts() {
+  const alerts = [];
+  for (const feed of TRUSTED_NER_FEEDS) {
+    try {
+      const result = await rssParser.parseURL(feed.url);
+      for (const item of (result.items || []).slice(0, 30)) {
+        const text = [item.title, item.contentSnippet, item.content, item.summary].filter(Boolean).join(' ');
+        const state = detectState(text);
+        const alertType = detectAlertType(text);
+        if (!state || alertType === 'Other') continue;
+        const publishedAt = item.isoDate || item.pubDate || new Date().toISOString();
+        if (Date.now() - new Date(publishedAt).getTime() > 72 * 60 * 60 * 1000) continue;
+        alerts.push({
+          title: item.title || 'NER news alert',
+          description: item.contentSnippet || item.content || '',
+          location: state,
+          district: '',
+          state,
+          severity: detectSeverity(text),
+          alertType,
+          source: feed.name,
+          sourceUrl: item.link || feed.url,
+          publishedAt: new Date(publishedAt),
+          verificationLevel: 'reputable-report',
+          status: 'active'
+        });
+      }
+    } catch (err) {
+      console.warn(`[Alerts] ${feed.name} feed unavailable:`, err.message);
+    }
+  }
+  return alerts;
+}
+
+function fingerprint(alert) {
+  const value = [alert.state, alert.alertType, alert.location, alert.title]
+    .join('|').toLowerCase().replace(/\s+/g, ' ').trim();
+  return crypto.createHash('sha1').update(value).digest('hex');
+}
+
 /**
  * Main aggregation: fetch from all external sources, normalize, rank, store top-20.
  */
 exports.aggregate = async () => {
-  console.log('[Alerts] Starting daily alert aggregation...');
+  console.log('[Alerts] Starting five-minute NER alert aggregation...');
+
+  // Never present the old demo/sample records as current intelligence.
+  await Alert.updateMany({ status: 'active', source: /^Sample Data/ }, { $set: { status: 'resolved', updatedAt: new Date() } });
 
   const imdAlerts = await fetchIMDAlerts();
-  const allRaw = [...imdAlerts];
+  const newsAlerts = await fetchTrustedNewsAlerts();
+  const allRaw = [...imdAlerts, ...newsAlerts];
 
   console.log(`[Alerts] Fetched ${allRaw.length} raw alerts from external sources.`);
 
   if (allRaw.length === 0) {
-    console.warn('[Alerts] No external alerts retrieved. Existing DB alerts retained.');
+    console.warn('[Alerts] No verified external NER alerts retrieved. Existing alerts retained.');
     return;
   }
 
   // Score and deduplicate
   const seen = new Set();
   const scored = allRaw
-    .map(a => ({ ...a, priorityScore: calcPriorityScore({ ...a, createdAt: new Date() }) }))
+    .map(a => ({ ...a, fingerprint: fingerprint(a), priorityScore: calcPriorityScore({ ...a, createdAt: new Date() }) }))
     .filter(a => {
-      const key = a.title.toLowerCase().trim();
+      const key = a.fingerprint;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -139,11 +191,24 @@ exports.aggregate = async () => {
     .sort((a, b) => b.priorityScore - a.priorityScore)
     .slice(0, 20);
 
-  // Retire old active alerts, insert fresh batch
-  await Alert.updateMany({ status: 'active' }, { $set: { status: 'resolved', updatedAt: new Date() } });
-  await Alert.insertMany(scored.map(a => ({ ...a, createdAt: new Date(), updatedAt: new Date() })));
-
-  console.log(`[Alerts] Stored ${scored.length} fresh alerts in database.`);
+  const now = new Date();
+  const previous = await Alert.find({ fingerprint: { $in: scored.map(a => a.fingerprint) } }).lean();
+  const previousByFingerprint = new Map(previous.map(alert => [alert.fingerprint, alert]));
+  for (const alert of scored) {
+    const old = previousByFingerprint.get(alert.fingerprint);
+    const changed = !old || old.severity !== alert.severity || old.description !== alert.description;
+    const update = {
+      ...alert,
+      firstSeenAt: old?.firstSeenAt || now,
+      lastSeenAt: now,
+      lastChangedAt: changed ? now : (old.lastChangedAt || now),
+      confirmationCount: (old?.confirmationCount || 0) + 1,
+      changeType: !old ? 'NEW' : changed ? 'UPDATED' : 'UNCHANGED',
+      updatedAt: now
+    };
+    await Alert.updateOne({ fingerprint: alert.fingerprint }, { $set: update, $setOnInsert: { createdAt: old?.createdAt || now } }, { upsert: true });
+  }
+  console.log(`[Alerts] Stored ${scored.length} current NER alerts; ${scored.filter(a => !previousByFingerprint.has(a.fingerprint)).length} new.`);
 };
 
 /**

@@ -134,6 +134,7 @@ window.selectRoute = async (index) => {
   const route = state.routes[index];
   if (!route) return;
   state.selectedRoute = route;
+  state.selectedFacility = null;
   notify(`Route selected: ${route.summary}`, 'success');
   const { go } = await import('../router.js');
   go('Live Network');

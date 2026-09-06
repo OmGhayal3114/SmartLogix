@@ -63,6 +63,20 @@ async function init() {
   } catch (e) {
     console.warn('[App] Could not load alerts:', e.message);
   }
+
+  // Keep the NER alert panel synchronized with the backend's five-minute feed.
+  setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      const { api } = await import('./api.js');
+      const data = await api.getTop10Alerts();
+      state.top10Alerts = data.alerts || [];
+      state.alertsLastUpdated = data.lastUpdated;
+      if (state.page === 'Alerts') await render();
+    } catch (e) {
+      console.warn('[App] Alert refresh failed:', e.message);
+    }
+  }, 5 * 60 * 1000);
 }
 
 init().catch(err => {

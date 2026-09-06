@@ -4,12 +4,11 @@ const alertAggregator = require('../services/alertAggregator');
 let cronJob = null;
 
 exports.start = () => {
-  // Run daily at 06:00 IST (UTC 00:30)
-  cronJob = cron.schedule('30 0 * * *', async () => {
-    console.log('[Cron] Running daily NER alert update...');
+  // Refresh current NER alerts every five minutes.
+  cronJob = cron.schedule('*/5 * * * *', async () => {
+    console.log('[Cron] Running five-minute NER alert update...');
     try {
       await alertAggregator.aggregate();
-      await alertAggregator.seedSampleAlerts(); // ensure DB never empty
     } catch (err) {
       console.error('[Cron] Alert update failed:', err.message);
     }
@@ -20,13 +19,12 @@ exports.start = () => {
     console.log('[Startup] Running initial alert aggregation...');
     try {
       await alertAggregator.aggregate();
-      await alertAggregator.seedSampleAlerts();
     } catch (err) {
       console.error('[Startup] Initial alert aggregation failed:', err.message);
     }
   }, 5000);
 
-  console.log('[Cron] Daily NER alert update scheduled (06:00 IST / 00:30 UTC).');
+  console.log('[Cron] NER alert update scheduled every 5 minutes.');
 };
 
 exports.stop = () => {

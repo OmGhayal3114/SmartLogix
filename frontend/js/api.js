@@ -46,5 +46,4 @@ export const api = {
   submitFeedback: (body, token) => request('POST', '/feedback', body, token || undefined),
 
   // Config
-  getMapsKey: () => request('GET', '/config/maps-key')
 };

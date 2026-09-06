@@ -63,7 +63,7 @@ export function renderFacilitiesPage() {
 
         <div class="facilities">
           ${state.facilities.map(f => `
-          <div class="facility" style="cursor:default">
+          <div class="facility" style="cursor:pointer" onclick="selectFacility(${state.facilities.indexOf(f)})" title="Show directions on map">
             <div class="row">
               <div>
                 <b>${esc(f.name)}</b>
@@ -84,3 +84,11 @@ export function renderFacilitiesPage() {
     }
   </section>`;
 }
+
+window.selectFacility = async (index) => {
+  const facility = state.facilities[index];
+  if (!facility || !facility.coordinates) return;
+  state.selectedFacility = facility;
+  const { go } = await import('../router.js');
+  go('Live Network');
+};

@@ -12,7 +12,6 @@ const facilityRoutes = require('./routes/facilities');
 const alertRoutes = require('./routes/alerts');
 const mlRoutes = require('./routes/ml');
 const feedbackRoutes = require('./routes/feedback');
-const configRoutes = require('./routes/config');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -54,7 +53,7 @@ async function ensureDbConnected() {
 
 // Ensure DB is connected before handling API routes
 app.use('/api', async (req, res, next) => {
-  if (req.path === '/health' || req.path === '/config/maps-key') {
+  if (req.path === '/health') {
     return next();
   }
   try {
@@ -76,7 +75,6 @@ app.use('/api/facilities', facilityRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/ml', mlRoutes);
 app.use('/api/feedback', feedbackRoutes);
-app.use('/api/config', configRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

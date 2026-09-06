@@ -3,7 +3,7 @@
 import { state } from '../state.js';
 import { api } from '../api.js';
 import { t } from '../i18n.js';
-import { loadGoogleMapsScript, initMap, displayRoute, addFacilityMarkers, addAlertMarkers } from '../maps.js';
+import { initMap, displayRoute, displayFacilityRoute, startUserLocationTracking, addFacilityMarkers, addAlertMarkers } from '../maps.js';
 
 function esc(s) {
   return String(s || '').replace(/[&<>"']/g, m =>
@@ -49,8 +49,8 @@ export function renderLivePage() {
       <span class="badge success">Network operational</span>
     </div>
 
-    <!-- Google Map container -->
-    <div id="google-map" style="height:460px;border-radius:12px;border:1px solid #2dd4bf26;background:#040a12;position:relative;overflow:hidden;margin-bottom:24px">
+    <!-- OpenStreetMap / Leaflet map container -->
+    <div id="osm-map" style="height:460px;border-radius:12px;border:1px solid #2dd4bf26;background:#040a12;position:relative;overflow:hidden;margin-bottom:24px">
       ${state.loadingMap
         ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#040a12">
              <div style="text-align:center;color:var(--teal)">
@@ -59,6 +59,12 @@ export function renderLivePage() {
              </div>
            </div>`
         : ''}
+      <div style="position:absolute;left:12px;bottom:12px;z-index:500;background:#07111fe8;border:1px solid #2dd4bf44;border-radius:8px;padding:9px 11px;color:#cbd5e1;font-size:11px;max-width:260px">
+        <div id="location-status">Live location is not active.</div>
+        <div style="margin-top:5px">Remaining distance: <b id="remaining-distance">—</b></div>
+        ${state.selectedFacility ? `<div id="facility-direction-info" style="margin-top:5px;color:#fb923c">Calculating directions to ${esc(state.selectedFacility.name)}…</div>` : ''}
+        ${state.selectedFacility ? `<div id="facility-directions-list" style="margin-top:7px;max-height:130px;overflow:auto;color:#e2e8f0">Loading turn-by-turn directions…</div>` : ''}
+      </div>
     </div>
 
     <div class="grid two">
@@ -81,7 +87,7 @@ export function renderLivePage() {
             ? `<div style="color:var(--muted)">${t('live.loadingRisk')}</div>`
             : risk
             ? `<div class="eyebrow">${t('live.routeRisk')}</div>
-               <div style="font-size:22px;font-weight:bold;color:${riskColor};margin:8px 0">${risk.risk} RISK</div>
+               <div style="font-size:22px;font-weight:bold;color:${riskColor};margin:8px 0">${Math.round((risk.score || 0) * 100)}% ROUTE RISK</div>
                <p style="font-size:12px;color:#94a3b8;line-height:1.6">${esc(risk.reason)}</p>
                <div style="font-size:10px;color:var(--muted);margin-top:8px">
                  ${risk.source === 'ml-model' ? '◉ ML model prediction' : '⚡ Rule-based assessment'}
@@ -107,7 +113,7 @@ export function renderLivePage() {
         ${state.loadingAlerts
           ? `<div style="color:var(--muted)">${t('live.loadingAlerts')}</div>`
           : state.routeAlerts.length === 0
-          ? `<div style="color:var(--muted);font-size:13px">No active alerts detected for this route corridor.</div>`
+          ? `<div style="padding:12px;background:#34d39912;border:1px solid #34d39944;border-radius:8px;color:#86efac;font-size:13px"><b>Safer to travel</b><br><span style="font-size:11px">No active verified alerts detected for this route.</span></div>`
           : state.routeAlerts.map(a => alertCard(a)).join('')
         }
       </div>
@@ -120,7 +126,7 @@ export function renderLivePage() {
       ${state.loadingFacilities
         ? `<div style="color:var(--muted)">${t('live.loadingFacilities')}</div>`
         : state.facilities.length === 0
-        ? `<div style="color:var(--muted);font-size:13px">No facility data available. Ensure Google Places API is enabled.</div>`
+        ? `<div style="color:var(--muted);font-size:13px">No facility data available for this route.</div>`
         : `<div class="facilities">${state.facilities.slice(0, 9).map(f => facilityCard(f)).join('')}</div>`
       }
     </div>
@@ -145,7 +151,7 @@ function facilityCard(f) {
   const typeLabel = { hospital: 'Hospital', lodging: 'Hotel', gas_station: 'Fuel Station' };
   const typeColor = { hospital: 'var(--red)', lodging: 'var(--orange)', gas_station: 'var(--teal)' };
   return `
-  <div class="facility" style="cursor:default">
+  <div class="facility" style="cursor:pointer" onclick="selectFacilityFromLive('${esc(f.placeId)}')" title="Show directions on map">
     <div class="row">
       <div>
         <b style="font-size:13px">${esc(f.name)}</b>
@@ -160,6 +166,14 @@ function facilityCard(f) {
   </div>`;
 }
 
+window.selectFacilityFromLive = async (placeId) => {
+  const facility = state.facilities.find(item => String(item.placeId) === String(placeId));
+  if (!facility) return;
+  state.selectedFacility = facility;
+  const { go } = await import('../router.js');
+  go('Live Network');
+};
+
 export async function initLiveNetwork() {
   if (!state.selectedRoute) return;
 
@@ -169,15 +183,18 @@ export async function initLiveNetwork() {
   state.loadingFacilities = true;
   window.render();
 
-  // Load Google Maps
+  // Initialize the OpenStreetMap/Leaflet renderer
   try {
-    await loadGoogleMapsScript();
     state.loadingMap = false;
     window.render();
-    // Small delay so the DOM updates before initMap
-    setTimeout(() => {
-      const map = initMap('google-map');
-      if (map) displayRoute(state.origin, state.destination);
+    // Small delay so the DOM updates before initializing Leaflet.
+    setTimeout(async () => {
+      const map = await initMap('osm-map');
+      if (map) {
+        displayRoute(state.selectedRoute);
+        startUserLocationTracking();
+        if (state.selectedFacility) displayFacilityRoute(state.selectedFacility);
+      }
     }, 150);
   } catch (err) {
     state.loadingMap = false;
@@ -208,6 +225,18 @@ export async function initLiveNetwork() {
   state.loadingFacilities = false;
 
   window.render();
+  // Rendering the updated cards replaces the map DOM node. Recreate Leaflet
+  // after that render so the map remains visible after data loads.
+  setTimeout(async () => {
+    const liveMap = await initMap('osm-map');
+    if (liveMap) {
+      displayRoute(state.selectedRoute);
+      startUserLocationTracking();
+      if (state.selectedFacility) displayFacilityRoute(state.selectedFacility);
+      addAlertMarkers(state.routeAlerts);
+      addFacilityMarkers(state.facilities);
+    }
+  }, 50);
 }
 
 window.saveTripToServer = async () => {

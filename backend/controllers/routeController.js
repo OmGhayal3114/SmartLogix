@@ -1,4 +1,4 @@
-const mapsService = require('../services/googleMaps');
+const mapsService = require('../services/osmMaps');
 
 exports.calculateRoutes = async (req, res, next) => {
   try {
@@ -7,7 +7,6 @@ exports.calculateRoutes = async (req, res, next) => {
     const routes = await mapsService.getRoutes(origin, destination, vehicleType);
     res.json({ routes });
   } catch (err) {
-    if (err.message === 'MAPS_API_ERROR') return res.status(502).json({ error: 'Route calculation failed. Please check the origin and destination and try again.' });
-    next(err);
+    return res.status(502).json({ error: err.message || 'Route calculation service is temporarily unavailable.' });
   }
 };

@@ -11,7 +11,7 @@ A full-stack logistics intelligence platform for the **North Eastern Region (NER
 | Frontend | Vanilla JS SPA (ES Modules), HTML, CSS |
 | Backend | Node.js + Express + MongoDB (Mongoose) |
 | ML Service | Python + FastAPI + scikit-learn |
-| Maps | Google Maps JavaScript API (key served by backend) |
+| Maps | Leaflet + OpenStreetMap + OSRM + Overpass |
 | Weather | Open-Meteo (free, no key required) |
 | Auth | JWT (jsonwebtoken + bcryptjs) |
 
@@ -33,11 +33,10 @@ cd smartlogix
 
 ### 2. Configure Environment
 
-The `.env` file is already created with your Google Maps API key. To change any values:
+The `.env` file contains local development settings. To change any values:
 
 ```bash
 # Edit .env
-GOOGLE_MAPS_API_KEY=AIzaSyBA_Y-csOWhduDCxDyph7CVmIFZeo_x_68
 MONGODB_URI=mongodb://localhost:27017/nersmartlogix
 JWT_SECRET=ner_smartlogix_super_secret_jwt_key_change_in_production
 PORT=5000
@@ -111,7 +110,7 @@ python training/train.py
 
 ---
 
-## Google APIs Required
+## Open map services
 
 Enable these APIs in [Google Cloud Console](https://console.cloud.google.com/apis/):
 
@@ -133,7 +132,7 @@ Enable these APIs in [Google Cloud Console](https://console.cloud.google.com/api
 - Select a route → instantly opens Live Network
 
 ### Live Network
-- Real Google Maps with dark theme matching the app
+- Interactive OpenStreetMap with proper attribution
 - Route displayed with teal polyline
 - ML-powered risk assessment (LOW / MEDIUM / HIGH)
 - Active alerts affecting your route
@@ -155,7 +154,7 @@ Enable these APIs in [Google Cloud Console](https://console.cloud.google.com/api
 ### Facilities
 - Requires a route to be selected
 - Hospitals, hotels, fuel stations along the route
-- Rating and open/closed status from Google Places API
+- Facility locations and names from OpenStreetMap
 
 ### Help & Safety
 - Quick action shortcuts (emergency, facilities, contacts, share trip)
@@ -191,7 +190,7 @@ smartlogix/
 │   │   ├── api.js                # Backend API client
 │   │   ├── i18n.js               # Translation engine
 │   │   ├── auth.js               # Auth modal
-│   │   ├── maps.js               # Google Maps integration
+│   │   ├── maps.js               # Leaflet/OpenStreetMap integration
 │   │   ├── render.js             # Main render engine
 │   │   ├── router.js             # Page router
 │   │   └── pages/
@@ -213,7 +212,7 @@ smartlogix/
 │   ├── middleware/      auth.js, errorHandler.js
 │   ├── routes/          auth.js, trips.js, routes.js, facilities.js, alerts.js, ml.js, feedback.js, config.js
 │   ├── controllers/     authController.js, tripController.js, routeController.js, facilityController.js, alertController.js, mlController.js, feedbackController.js
-│   ├── services/        googleMaps.js, alertAggregator.js
+│   ├── services/        osmMaps.js, alertAggregator.js
 │   └── jobs/            alertCron.js
 │
 └── ml/
@@ -247,5 +246,4 @@ smartlogix/
 | GET | `/api/trips` | My trips | Yes |
 | DELETE | `/api/trips/:id` | Delete trip | Yes |
 | POST | `/api/feedback` | Submit feedback | Optional |
-| GET | `/api/config/maps-key` | Get Maps API key | No |
 | GET | `/api/health` | Health check | No |

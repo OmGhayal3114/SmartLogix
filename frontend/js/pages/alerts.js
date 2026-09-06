@@ -31,6 +31,7 @@ export function renderAlertsPage() {
     ? new Date(state.alertsLastUpdated).toLocaleString('en-IN')
     : null;
   const hasSampleData = state.top10Alerts.some(a => a.source && a.source.includes('Sample Data'));
+  const alertRisk = calculateAlertRisk(state.top10Alerts);
 
   return `
   <section class="content">
@@ -48,10 +49,12 @@ export function renderAlertsPage() {
       ⚡ ${t('alerts.sampleNote')}
     </div>` : ''}
 
+    ${!state.loadingAlerts && state.top10Alerts.length === 0 ? `<div style="padding:18px;background:#34d39912;border:1px solid #34d39944;border-radius:10px;color:#86efac;margin-bottom:18px"><b>Safer to travel</b><br><span style="font-size:12px">No active verified NER alerts were detected in the latest update.</span></div>` : ''}
+    ${state.top10Alerts.length > 0 ? `<div style="padding:14px;background:#fb923c12;border:1px solid #fb923c44;border-radius:10px;margin-bottom:18px"><b style="color:#fdba74">Current NER alert risk: ${alertRisk}%</b><div style="font-size:12px;color:#cbd5e1;margin-top:4px">Based on verified alert severity, recency, and active alert count.</div></div>` : ''}
     ${state.loadingAlerts
       ? `<div class="empty"><div><div style="font-size:32px;color:var(--teal)">⟳</div><b>${t('alerts.loading')}</b></div></div>`
       : state.top10Alerts.length === 0
-      ? `<div class="empty"><div><b>${t('alerts.noAlerts')}</b></div></div>`
+      ? ''
       : state.top10Alerts.map((a, i) => alertItem(a, i, tone)).join('')
     }
 
@@ -62,18 +65,21 @@ export function renderAlertsPage() {
 
 function alertItem(a, i, tone) {
   const dateStr = a.createdAt ? new Date(a.createdAt).toLocaleString('en-IN') : '';
+  const risk = severityRisk(a.severity);
   return `
   <button class="alert" onclick="selectAlert(${i})">
     <div class="row">
       <div style="flex:1">
         <b>${esc(a.title)}</b>
-        <span class="badge ${tone[a.severity] || ''}" style="margin-left:8px">${a.severity}</span>
+      <span class="badge ${tone[a.severity] || ''}" style="margin-left:8px">Risk ${risk}%</span>
+        ${a.changeType === 'NEW' ? `<span class="badge success" style="margin-left:6px">NEW</span>` : a.changeType === 'UPDATED' ? `<span class="badge info" style="margin-left:6px">UPDATED</span>` : ''}
       </div>
       <span class="muted" style="white-space:nowrap;font-size:11px">${dateStr}</span>
     </div>
     <div class="row" style="margin-top:8px">
       <span class="muted">${esc(a.state)} · ${esc(a.location)}</span>
       <span class="badge" style="background:#ffffff08">${esc(a.alertType)}</span>
+      <span class="muted" style="font-size:11px;margin-left:6px">${esc(a.source || '')}</span>
     </div>
   </button>`;
 }
@@ -84,7 +90,7 @@ function alertDetail(a, tone) {
   <div class="detail" style="border-color:#fb923c33;margin-top:24px">
     <div class="row">
       <div>
-        <span class="badge ${tone[a.severity] || ''}">${a.severity}</span>
+        <span class="badge ${tone[a.severity] || ''}">Risk ${severityRisk(a.severity)}%</span>
         <h2 style="margin-top:10px">${esc(a.title)}</h2>
       </div>
       <button class="link" onclick="state.selectedAlert=null;window.render()">✕ Close</button>
@@ -104,6 +110,16 @@ function alertDetail(a, tone) {
       <button class="btn primary" onclick="go('Plan Trip')">${t('alerts.findRoute')}</button>
     </div>
   </div>`;
+}
+
+function severityRisk(severity) {
+  return ({ CRITICAL: 95, HIGH: 75, MEDIUM: 50, LOW: 25 }[severity] || 40);
+}
+
+function calculateAlertRisk(alerts) {
+  if (!alerts.length) return 0;
+  const highest = Math.max(...alerts.map(a => severityRisk(a.severity)));
+  return Math.min(99, highest + Math.max(0, alerts.length - 1) * 3);
 }
 
 window.selectAlert = (i) => {

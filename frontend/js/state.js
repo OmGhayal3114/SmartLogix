@@ -26,6 +26,7 @@ export const state = {
   mlRisk: null,
   routeAlerts: [],
   facilities: [],
+  selectedFacility: null,
 
   // Alerts page
   top10Alerts: [],
@@ -53,7 +54,9 @@ export const state = {
   toast: { message: '', type: 'success' },
 
   // Maps
-  googleMapsKey: null
+  userLocation: null,
+  locationError: null,
+  remainingDistance: null
 };
 
 export function loadSession() {

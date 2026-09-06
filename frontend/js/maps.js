@@ -1,417 +1,204 @@
-// NER SmartLogix — Map integration (Google Maps + Dark Leaflet Fallback)
-
+// Leaflet + OpenStreetMap map integration.
 import { state } from './state.js';
-import { api } from './api.js';
 
-let activeEngine = 'none'; // 'google' | 'leaflet'
-let googleMap = null;
-let googleDirectionsRenderer = null;
-let googleMarkers = [];
-
-let leafletMap = null;
-let leafletMarkers = [];
-let leafletRouteLayer = null;
-
-let lastContainerId = 'google-map';
-let lastOrigin = '';
-let lastDestination = '';
+let map = null;
+let routeLayer = null;
+let facilityRouteLayer = null;
+let userMarker = null;
+let destinationPoint = null;
+let locationWatchId = null;
+let lastRemainingRequest = 0;
+let markers = [];
 let pendingFacilities = [];
 let pendingAlerts = [];
 
-const NER_CITY_COORDS = {
-  'guwahati': [26.1445, 91.7362],
-  'shillong': [25.5788, 91.8933],
-  'kohima': [25.6751, 94.1086],
-  'dimapur': [25.9063, 93.7263],
-  'imphal': [24.8170, 93.9368],
-  'aizawl': [23.7307, 92.7173],
-  'agartala': [23.8315, 91.2868],
-  'itanagar': [27.0844, 93.6053],
-  'gangtok': [27.3389, 88.6065],
-  'silchar': [24.8333, 92.7789],
-  'jorhat': [26.7465, 94.2026],
-  'dibrugarh': [27.4728, 94.9120],
-  'tezpur': [26.6338, 92.7931]
-};
-
-function getCoords(name) {
-  const clean = (name || '').toLowerCase().trim();
-  for (const [k, v] of Object.entries(NER_CITY_COORDS)) {
-    if (clean.includes(k)) return v;
-  }
-  return [25.5, 92.5];
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
 }
 
-// Global hook: Google Maps calls this function if authentication/key fails
-window.gm_authFailure = () => {
-  console.warn('[Maps] Google Maps authentication failed. Activating high-performance dark fallback map.');
-  initLeafletFallback(lastContainerId);
-};
-
-export async function loadGoogleMapsScript() {
-  if (window.google && window.google.maps) return;
-
-  try {
-    if (!state.googleMapsKey) {
-      const data = await api.getMapsKey();
-      state.googleMapsKey = data.key;
-    }
-
-    if (!state.googleMapsKey || state.googleMapsKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
-      throw new Error('Key not configured');
-    }
-
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${state.googleMapsKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = resolve;
-      script.onerror = (err) => {
-        console.warn('[Maps] Google script loading failed, fallback will be used.');
-        resolve(); // resolve so app continues with fallback
-      };
-      document.head.appendChild(script);
-    });
-  } catch (err) {
-    console.warn('[Maps] Could not load Google Maps script:', err.message);
-  }
-}
-
-export function initMap(containerId) {
-  lastContainerId = containerId;
-  const el = document.getElementById(containerId);
-  if (!el) return null;
-
-  // If Google Maps is successfully available and not failed:
-  if (window.google && window.google.maps && typeof google.maps.Map === 'function') {
-    try {
-      googleMap = new google.maps.Map(el, {
-        center: { lat: 25.5, lng: 92.5 },
-        zoom: 7,
-        styles: [
-          { elementType: 'geometry', stylers: [{ color: '#0b0f1a' }] },
-          { elementType: 'labels.text.stroke', stylers: [{ color: '#0b0f1a' }] },
-          { elementType: 'labels.text.fill', stylers: [{ color: '#5eead4' }] },
-          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
-          { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#2dd4bf22' }] },
-          { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2d3748' }] },
-          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#040a12' }] },
-          { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#5eead444' }] },
-          { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#111827' }] },
-          { featureType: 'poi', stylers: [{ visibility: 'off' }] }
-        ]
-      });
-
-      googleDirectionsRenderer = new google.maps.DirectionsRenderer({
-        suppressMarkers: false,
-        polylineOptions: {
-          strokeColor: '#5eead4',
-          strokeWeight: 4,
-          strokeOpacity: 0.85
-        }
-      });
-      googleDirectionsRenderer.setMap(googleMap);
-
-      activeEngine = 'google';
-      return googleMap;
-    } catch (e) {
-      console.warn('[Maps] Google Map initialization error:', e);
-      return initLeafletFallback(containerId);
-    }
-  } else {
-    return initLeafletFallback(containerId);
-  }
-}
-
-async function ensureLeafletLoaded() {
-  if (window.L) return;
-
+function ensureLeafletLoaded() {
+  if (window.L) return Promise.resolve();
   if (!document.getElementById('leaflet-css')) {
     const link = document.createElement('link');
     link.id = 'leaflet-css';
     link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
     document.head.appendChild(link);
   }
-
-  await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
     script.onload = resolve;
-    script.onerror = reject;
+    script.onerror = () => reject(new Error('Leaflet could not be loaded. Check your internet connection.'));
     document.head.appendChild(script);
   });
 }
 
-async function initLeafletFallback(containerId) {
-  const el = document.getElementById(containerId);
-  if (!el) return null;
+export async function initMap(containerId) {
+  const element = document.getElementById(containerId);
+  if (!element) return null;
+  await ensureLeafletLoaded();
+  if (map) map.remove();
+  markers = [];
+  userMarker = null;
+  element.innerHTML = '';
+  map = L.map(element, { center: [25.5, 92.5], zoom: 7, zoomControl: true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
+  }).addTo(map);
+  if (pendingFacilities.length) addFacilityMarkers(pendingFacilities);
+  if (pendingAlerts.length) addAlertMarkers(pendingAlerts);
+  return map;
+}
 
+export function displayRoute(route) {
+  if (!map || !route?.geometry) return;
+  if (routeLayer) map.removeLayer(routeLayer);
+  routeLayer = L.geoJSON(route.geometry, { style: { color: '#14b8a6', weight: 5, opacity: 0.9 } }).addTo(map);
+  destinationPoint = route.destination;
+  map.fitBounds(routeLayer.getBounds().pad(0.18));
+  const coordinates = route.geometry.coordinates;
+  const start = coordinates[0].slice().reverse();
+  const end = coordinates[coordinates.length - 1].slice().reverse();
+  L.marker(start, { icon: pointIcon('#5eead4', 'A') }).addTo(map).bindPopup(`<b>Origin</b><br>${escapeHtml(route.startAddress)}`);
+  L.marker(end, { icon: pointIcon('#34d399', 'B') }).addTo(map).bindPopup(`<b>Destination</b><br>${escapeHtml(route.endAddress)}`);
+}
+
+export async function displayFacilityRoute(facility) {
+  if (!map || !facility?.coordinates) return;
+  const route = state.selectedRoute;
+  const start = state.userLocation || route?.origin;
+  if (!start) return;
+  const destination = facility.coordinates;
   try {
-    await ensureLeafletLoaded();
-    if (!window.L) return null;
-
-    if (leafletMap) {
-      leafletMap.remove();
-      leafletMap = null;
+    const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson&steps=true`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const geometry = data.routes?.[0]?.geometry;
+    const routeInfo = data.routes?.[0];
+    if (!geometry || !routeInfo) throw new Error('No drivable route to this facility.');
+    if (facilityRouteLayer) map.removeLayer(facilityRouteLayer);
+    facilityRouteLayer = L.geoJSON(geometry, { style: { color: '#fb923c', weight: 5, opacity: 0.95, dashArray: '10 7' } }).addTo(map);
+    const marker = L.marker([destination.lat, destination.lng], { icon: pointIcon('#fb923c', 'F') })
+      .addTo(map)
+      .bindPopup(`<b>${escapeHtml(facility.name)}</b><br>Directions destination`)
+      .openPopup();
+    markers.push(marker);
+    map.fitBounds(facilityRouteLayer.getBounds().pad(0.2));
+    const distance = `${(routeInfo.distance / 1000).toFixed(1)} km`;
+    const duration = `${Math.max(1, Math.round(routeInfo.duration / 60))} min`;
+    const info = document.getElementById('facility-direction-info');
+    if (info) info.textContent = `Directions to ${facility.name}: ${distance} · ${duration}`;
+    const directions = document.getElementById('facility-directions-list');
+    if (directions) {
+      const steps = routeInfo.legs?.[0]?.steps || [];
+      directions.innerHTML = steps.map((step, index) => {
+        const maneuver = step.maneuver || {};
+        const modifier = maneuver.modifier ? maneuver.modifier.replace('-', ' ') : '';
+        const action = maneuver.type === 'depart' ? 'Depart' : maneuver.type === 'arrive' ? 'Arrive at destination' : `${maneuver.type === 'continue' ? 'Continue' : maneuver.type.replace('-', ' ')}${modifier ? ` ${modifier}` : ''}`;
+        const distanceText = step.distance >= 1000 ? `${(step.distance / 1000).toFixed(1)} km` : `${Math.round(step.distance || 0)} m`;
+        return `<div style="display:flex;gap:9px;padding:8px 0;border-bottom:1px solid #ffffff10"><b style="color:#fb923c;min-width:42px">${distanceText}</b><span>${index + 1}. ${escapeHtml(action)}${step.name ? ` <span style="color:#94a3b8">on ${escapeHtml(step.name)}</span>` : ''}</span></div>`;
+      }).join('') || '<div style="color:#94a3b8">No turn-by-turn steps returned.</div>';
     }
-
-    el.innerHTML = ''; // Clean any broken Google Maps overlays
-
-    leafletMap = L.map(containerId, {
-      center: [25.5, 92.5],
-      zoom: 7,
-      zoomControl: true
-    });
-
-    // High-performance dark logistics tiles (No watermark, clean dark theme)
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-      attribution: '© Esri, HERE, Garmin, OpenStreetMap contributors',
-      maxZoom: 16
-    }).addTo(leafletMap);
-
-    // Dark labels & highway reference overlay
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 16
-    }).addTo(leafletMap);
-
-    activeEngine = 'leaflet';
-
-    // Replay pending items
-    if (lastOrigin && lastDestination) {
-      displayRoute(lastOrigin, lastDestination);
-    }
-    if (pendingFacilities.length > 0) {
-      addFacilityMarkers(pendingFacilities);
-    }
-    if (pendingAlerts.length > 0) {
-      addAlertMarkers(pendingAlerts);
-    }
-
-    return leafletMap;
-  } catch (err) {
-    console.error('[Maps] Leaflet fallback initialization failed:', err);
-    return null;
+  } catch (error) {
+    const info = document.getElementById('facility-direction-info');
+    if (info) info.textContent = `Could not calculate directions to ${facility.name}.`;
+    console.warn('[Maps] Facility route failed:', error.message);
   }
 }
 
-export function displayRoute(origin, destination) {
-  lastOrigin = origin;
-  lastDestination = destination;
+function pointIcon(color, symbol) {
+  return L.divIcon({ className: 'ner-map-marker', html: `<div style="background:${color};color:#07111f;width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 10px ${color};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px">${symbol}</div>`, iconSize: [22, 22], iconAnchor: [11, 11] });
+}
 
-  const c1 = getCoords(origin);
-  const c2 = getCoords(destination);
+function setLocationStatus(text) {
+  const element = document.getElementById('location-status');
+  if (element) element.textContent = text;
+}
 
-  if (activeEngine === 'google' && googleMap && window.google) {
-    try {
-      const directionsService = new google.maps.DirectionsService();
-      directionsService.route({
-        origin,
-        destination,
-        travelMode: google.maps.TravelMode.DRIVING,
-        region: 'IN'
-      }, (result, status) => {
-        if (status === 'OK') {
-          googleDirectionsRenderer.setDirections(result);
-        } else {
-          console.warn('[Maps] Google directions status not OK:', status, '→ falling back to Leaflet');
-          initLeafletFallback(lastContainerId);
-        }
-      });
-      return;
-    } catch (e) {
-      console.warn('[Maps] Google Directions error:', e);
-      initLeafletFallback(lastContainerId);
-    }
+async function updateRemainingDistance(position) {
+  if (!destinationPoint || Date.now() - lastRemainingRequest < 10000) return;
+  lastRemainingRequest = Date.now();
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${position.coords.longitude},${position.coords.latitude};${destinationPoint.lng},${destinationPoint.lat}?overview=false`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const distance = data.routes?.[0]?.distance;
+    if (distance == null) return;
+    state.remainingDistance = `${(distance / 1000).toFixed(1)} km`;
+    const element = document.getElementById('remaining-distance');
+    if (element) element.textContent = state.remainingDistance;
+  } catch (error) {
+    setLocationStatus('Live location available; remaining route distance is temporarily unavailable.');
   }
+}
 
-  // Leaflet Route display
-  if (activeEngine === 'leaflet' && leafletMap && window.L) {
-    if (leafletRouteLayer) {
-      leafletMap.removeLayer(leafletRouteLayer);
-    }
-
-    // Midpoint curving for hill highway representation
-    const midLat = (c1[0] + c2[0]) / 2 + 0.08;
-    const midLng = (c1[1] + c2[1]) / 2 - 0.05;
-
-    const latlngs = [c1, [midLat, midLng], c2];
-
-    leafletRouteLayer = L.polyline(latlngs, {
-      color: '#5eead4',
-      weight: 5,
-      opacity: 0.9,
-      dashArray: '8, 8'
-    }).addTo(leafletMap);
-
-    // Origin Marker
-    const startIcon = L.divIcon({
-      className: 'route-marker start',
-      html: '<div style="background:#5eead4;width:14px;height:14px;border-radius:50%;border:2px solid #0b0f1a;box-shadow:0 0 10px #5eead4"></div>',
-      iconSize: [14, 14]
-    });
-    L.marker(c1, { icon: startIcon }).addTo(leafletMap).bindPopup(`<b>Origin:</b> ${origin}`);
-
-    // Destination Marker
-    const endIcon = L.divIcon({
-      className: 'route-marker end',
-      html: '<div style="background:#34d399;width:16px;height:16px;border-radius:50%;border:2px solid #0b0f1a;box-shadow:0 0 10px #34d399"></div>',
-      iconSize: [16, 16]
-    });
-    L.marker(c2, { icon: endIcon }).addTo(leafletMap).bindPopup(`<b>Destination:</b> ${destination}`);
-
-    leafletMap.fitBounds(L.latLngBounds([c1, c2]).pad(0.3));
+export function startUserLocationTracking() {
+  if (!map || !navigator.geolocation) {
+    setLocationStatus('Geolocation is not supported by this browser.');
+    return;
   }
+  if (locationWatchId !== null) navigator.geolocation.clearWatch(locationWatchId);
+  setLocationStatus('Requesting your current location…');
+  locationWatchId = navigator.geolocation.watchPosition(position => {
+    const point = [position.coords.latitude, position.coords.longitude];
+    state.userLocation = { lat: point[0], lng: point[1] };
+    if (!userMarker) userMarker = L.marker(point, { icon: pointIcon('#60a5fa', '●') }).addTo(map);
+    else userMarker.setLatLng(point);
+    userMarker.bindPopup('Your current location');
+    setLocationStatus(`Live location active · accuracy ${Math.round(position.coords.accuracy)} m`);
+    updateRemainingDistance(position);
+  }, error => {
+    const messages = { 1: 'Location permission was denied.', 2: 'Your location could not be determined.', 3: 'Location request timed out.' };
+    state.locationError = messages[error.code] || 'Unable to read your location.';
+    setLocationStatus(state.locationError);
+  }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
+}
+
+export function stopUserLocationTracking() {
+  if (locationWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(locationWatchId);
+  locationWatchId = null;
 }
 
 export function clearMarkers() {
-  if (googleMarkers.length > 0) {
-    googleMarkers.forEach(m => m.setMap(null));
-    googleMarkers = [];
-  }
-  if (leafletMarkers.length > 0 && leafletMap) {
-    leafletMarkers.forEach(m => leafletMap.removeLayer(m));
-    leafletMarkers = [];
-  }
+  markers.forEach(marker => map && map.removeLayer(marker));
+  markers = [];
   pendingFacilities = [];
   pendingAlerts = [];
 }
 
 export function addFacilityMarkers(facilities) {
   pendingFacilities = facilities || [];
-  if (!facilities || facilities.length === 0) return;
-
-  const typeColors = {
-    hospital: '#ef4444',
-    lodging: '#fb923c',
-    gas_station: '#5eead4'
-  };
-  const typeLabel = { hospital: 'Hospital', lodging: 'Hotel', gas_station: 'Fuel Station' };
-
-  if (activeEngine === 'google' && googleMap && window.google) {
-    facilities.forEach(f => {
-      if (!f.coordinates || f.coordinates.lat == null) return;
-      const color = typeColors[f.facilityType] || '#94a3b8';
-      const marker = new google.maps.Marker({
-        position: { lat: f.coordinates.lat, lng: f.coordinates.lng },
-        map: googleMap,
-        title: f.name,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: color,
-          fillOpacity: 0.9,
-          strokeWeight: 1,
-          strokeColor: '#ffffff'
-        }
-      });
-      const infoWindow = new google.maps.InfoWindow({
-        content: `<div style="background:#111827;color:#e8edf5;padding:10px;border-radius:8px;font-size:12px">
-          <b style="color:#5eead4">${f.name}</b>
-          <div style="color:#64748b;margin-top:4px">${typeLabel[f.facilityType] || f.facilityType}</div>
-          <div style="margin-top:4px">${f.address || ''}</div>
-          ${f.rating ? `<div style="margin-top:4px">⭐ ${f.rating}</div>` : ''}
-        </div>`
-      });
-      marker.addListener('click', () => infoWindow.open(googleMap, marker));
-      googleMarkers.push(marker);
-    });
-    return;
-  }
-
-  if (activeEngine === 'leaflet' && leafletMap && window.L) {
-    facilities.forEach(f => {
-      if (!f.coordinates || f.coordinates.lat == null) return;
-      const color = typeColors[f.facilityType] || '#5eead4';
-      const icon = L.divIcon({
-        html: `<div style="background:${color};width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 8px ${color}"></div>`,
-        iconSize: [12, 12]
-      });
-      const marker = L.marker([f.coordinates.lat, f.coordinates.lng], { icon })
-        .addTo(leafletMap)
-        .bindPopup(`
-          <div style="font-family:sans-serif;font-size:12px">
-            <b>${f.name}</b><br>
-            <span style="color:${color}">${typeLabel[f.facilityType] || f.facilityType}</span><br>
-            <small>${f.address || ''}</small>
-            ${f.rating ? `<br>⭐ ${f.rating}` : ''}
-          </div>
-        `);
-      leafletMarkers.push(marker);
-    });
-  }
+  if (!map) return;
+  const colors = { hospital: '#ef4444', lodging: '#fb923c', gas_station: '#5eead4' };
+  const labels = { hospital: 'Hospital', lodging: 'Hotel', gas_station: 'Petrol pump' };
+  facilities.forEach(facility => {
+    if (!facility.coordinates) return;
+    const color = colors[facility.facilityType] || '#94a3b8';
+    const marker = L.circleMarker([facility.coordinates.lat, facility.coordinates.lng], { radius: 7, color: '#fff', weight: 2, fillColor: color, fillOpacity: 0.95 })
+      .addTo(map)
+      .bindPopup(`<b>${escapeHtml(facility.name)}</b><br><span style="color:${color}">${labels[facility.facilityType] || escapeHtml(facility.facilityType)}</span><br><small>${escapeHtml(facility.address)}</small>`);
+    markers.push(marker);
+  });
 }
 
 export function addAlertMarkers(alerts) {
   pendingAlerts = alerts || [];
-  if (!alerts || alerts.length === 0) return;
-
-  const stateCoords = {
-    'Assam': { lat: 26.14, lng: 91.74 },
-    'Arunachal Pradesh': { lat: 27.08, lng: 93.61 },
-    'Manipur': { lat: 24.66, lng: 93.91 },
-    'Meghalaya': { lat: 25.47, lng: 91.37 },
-    'Mizoram': { lat: 23.73, lng: 92.72 },
-    'Nagaland': { lat: 25.67, lng: 94.11 },
-    'Sikkim': { lat: 27.53, lng: 88.51 },
-    'Tripura': { lat: 23.75, lng: 91.75 }
+  if (!map) return;
+  const stateCoordinates = {
+    Assam: [26.14, 91.74], 'Arunachal Pradesh': [27.08, 93.61], Manipur: [24.66, 93.91],
+    Meghalaya: [25.47, 91.37], Mizoram: [23.73, 92.72], Nagaland: [25.67, 94.11],
+    Sikkim: [27.53, 88.51], Tripura: [23.75, 91.75]
   };
-  const severityColors = { CRITICAL: '#ef4444', HIGH: '#fb923c', MEDIUM: '#fbbf24', LOW: '#94a3b8' };
-
-  if (activeEngine === 'google' && googleMap && window.google) {
-    alerts.forEach(a => {
-      const pos = (a.coordinates && a.coordinates.lat)
-        ? { lat: a.coordinates.lat, lng: a.coordinates.lng }
-        : stateCoords[a.state];
-      if (!pos) return;
-
-      const marker = new google.maps.Marker({
-        position: pos,
-        map: googleMap,
-        title: a.title,
-        icon: {
-          path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-          scale: 7,
-          fillColor: severityColors[a.severity] || '#fb923c',
-          fillOpacity: 0.9,
-          strokeWeight: 1,
-          strokeColor: '#ffffff'
-        }
-      });
-      const infoWindow = new google.maps.InfoWindow({
-        content: `<div style="background:#111827;color:#e8edf5;padding:10px;border-radius:8px;font-size:12px">
-          <b style="color:#fb923c">${a.title}</b>
-          <div style="color:#64748b;margin-top:4px">${a.state} · ${a.severity}</div>
-        </div>`
-      });
-      marker.addListener('click', () => infoWindow.open(googleMap, marker));
-      googleMarkers.push(marker);
-    });
-    return;
-  }
-
-  if (activeEngine === 'leaflet' && leafletMap && window.L) {
-    alerts.forEach(a => {
-      const pos = (a.coordinates && a.coordinates.lat)
-        ? [a.coordinates.lat, a.coordinates.lng]
-        : (stateCoords[a.state] ? [stateCoords[a.state].lat, stateCoords[a.state].lng] : null);
-      if (!pos) return;
-
-      const color = severityColors[a.severity] || '#fb923c';
-      const icon = L.divIcon({
-        html: `<div style="background:${color};color:#000;font-weight:bold;font-size:10px;text-align:center;line-height:16px;width:16px;height:16px;border-radius:3px;box-shadow:0 0 8px ${color}">!</div>`,
-        iconSize: [16, 16]
-      });
-      const marker = L.marker(pos, { icon })
-        .addTo(leafletMap)
-        .bindPopup(`
-          <div style="font-family:sans-serif;font-size:12px">
-            <b style="color:${color}">${a.severity}: ${a.title}</b><br>
-            <span>${a.state} · ${a.location || ''}</span>
-          </div>
-        `);
-      leafletMarkers.push(marker);
-    });
-  }
+  alerts.forEach(alert => {
+    const coordinates = alert.coordinates
+      ? [alert.coordinates.lat, alert.coordinates.lng]
+      : stateCoordinates[alert.state];
+    if (!coordinates) return;
+    const color = { CRITICAL: '#ef4444', HIGH: '#fb923c', MEDIUM: '#fbbf24', LOW: '#94a3b8' }[alert.severity] || '#fb923c';
+    const marker = L.circleMarker(coordinates, { radius: 7, color: '#fff', weight: 2, fillColor: color, fillOpacity: 0.95 }).addTo(map)
+      .bindPopup(`<b style="color:${color}">${escapeHtml(alert.severity)}: ${escapeHtml(alert.title)}</b><br>${escapeHtml(alert.location)}`);
+    markers.push(marker);
+  });
 }
