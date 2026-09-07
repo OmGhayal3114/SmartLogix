@@ -91,6 +91,22 @@ function routeCard(r, i) {
       ${r.durationInTraffic ? `<div><small>${t('plan.traffic')}</small><strong>${esc(r.durationInTraffic)}</strong></div>` : ''}
       <div><small>Vehicle</small><strong>${esc(r.vehicleType)}</strong></div>
     </div>
+
+    ${r.risk ? `
+      <div style="margin-top:12px;padding:12px;border-radius:9px;background:#ffffff06;border:1px solid #ffffff12">
+        <div class="row">
+          <div>
+            <small>Route risk</small>
+            <strong style="display:block;margin-top:4px;color:${r.risk.risk === 'HIGH' ? 'var(--red)' : r.risk.risk === 'MEDIUM' ? 'var(--orange)' : 'var(--green)'}">
+              ${esc(r.risk.risk)} · ${Number(r.risk.score || 0).toFixed(1)}/100
+            </strong>
+          </div>
+          <span class="badge">${Number(r.risk.metrics?.matchedHazards || 0)} hazards</span>
+        </div>
+        ${r.risk.recommendation ? `<div class="muted" style="margin-top:7px;font-size:11px">${esc(r.risk.recommendation)}</div>` : ''}
+      </div>
+    ` : ''}
+
     ${r.warnings && r.warnings.length > 0 ? `<div class="muted" style="margin-top:8px">⚠ ${esc(r.warnings.join(' '))}</div>` : ''}
   </div>`;
 }
