@@ -35,7 +35,7 @@ export function renderLivePage() {
   }
 
   const r = state.selectedRoute;
-  const risk = state.mlRisk;
+  const risk = r.risk || state.mlRisk;
   const riskColor = risk ? (RISK_COLORS[risk.risk] || 'var(--teal)') : '#64748b';
   const riskBg = risk ? (RISK_BG[risk.risk] || '#ffffff08') : '#ffffff08';
 
@@ -87,10 +87,15 @@ export function renderLivePage() {
             ? `<div style="color:var(--muted)">${t('live.loadingRisk')}</div>`
             : risk
             ? `<div class="eyebrow">${t('live.routeRisk')}</div>
-               <div style="font-size:22px;font-weight:bold;color:${riskColor};margin:8px 0">${Math.round((risk.score || 0) * 100)}% ROUTE RISK</div>
-               <p style="font-size:12px;color:#94a3b8;line-height:1.6">${esc(risk.reason)}</p>
+               <div style="font-size:22px;font-weight:bold;color:${riskColor};margin:8px 0">${Number(risk.score || 0).toFixed(1)}/100 ROUTE RISK</div>
+               <p style="font-size:12px;color:#94a3b8;line-height:1.6">
+                 ${esc(risk.recommendation || risk.reason || 'Route risk assessment available.')}
+               </p>
+               ${Array.isArray(risk.reasons) && risk.reasons.length
+                 ? `<div style="margin-top:8px">${risk.reasons.slice(0, 3).map(reason => `<div style="font-size:11px;color:#cbd5e1;margin-top:4px">• ${esc(reason)}</div>`).join('')}</div>`
+                 : ''}
                <div style="font-size:10px;color:var(--muted);margin-top:8px">
-                 ${risk.source === 'ml-model' ? '◉ ML model prediction' : '⚡ Rule-based assessment'}
+                 ${risk.scoringVersion ? `◉ ${esc(risk.scoringVersion)}` : risk.source === 'ml-model' ? '◉ ML model prediction' : '⚡ Rule-based assessment'}
                  ${risk.note ? ' (ML service offline)' : ''}
                </div>`
             : `<div style="color:var(--muted)">Risk assessment unavailable.</div>`
@@ -209,7 +214,9 @@ export async function initLiveNetwork() {
     api.getFacilitiesNearRoute(state.origin, state.destination)
   ]);
 
-  if (riskRes.status === 'fulfilled') state.mlRisk = riskRes.value;
+  if (riskRes.status === 'fulfilled' && !state.selectedRoute.risk) {
+    state.mlRisk = riskRes.value;
+  }
   state.loadingRisk = false;
 
   if (alertsRes.status === 'fulfilled') {
