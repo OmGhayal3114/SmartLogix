@@ -48,6 +48,16 @@ rainfall_mm,flood_index,alert_count_on_route,active_landslide_alerts,road_disrup
 - **NER routes only**: Data should be from Northeast India routes
 
 ## Training
+For a reproducible development bootstrap dataset only, run:
+```bash
+cd ml
+python training/generate_dataset.py
+```
+
+This generated data is not a substitute for labeled operational data. Replace
+it with validated IMD, NDMA, PWD, and historical trip records before relying
+on the model for safety-critical routing decisions.
+
 Once dataset is ready:
 ```bash
 cd ml

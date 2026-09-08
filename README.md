@@ -88,7 +88,7 @@ The repository includes Vercel Python functions for the ML service:
 
 When the Node API runs on Vercel, it automatically calls the ML functions in the same deployment using `VERCEL_URL`. In the Vercel project settings, add `MONGODB_URI`, `JWT_SECRET`, and any other values from `.env.example`, then redeploy. Set `ML_SERVICE_URL` only when using a separate ML host; its value should be the host URL ending in `/api/ml`.
 
-The ML endpoint uses the trained model in `ml/model/saved/risk_model.pkl` when that file is present. If no trained artifact is committed, it uses the weather-aware rule-based predictor and reports `source: "rule-based"`.
+The repository now includes a trained Random Forest artifact at `ml/model/saved/risk_model.pkl`, so the live endpoint reports `source: "ml-model"`. The checked-in dataset is a reproducible bootstrap dataset; replace it with validated IMD, NDMA, PWD, and historical trip records and rerun `python training/train.py` before using the model for safety-critical decisions.
 
 ---
 

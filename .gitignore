@@ -7,4 +7,5 @@ __pycache__/
 dist/
 .DS_Store
 ml/model/saved/*.pkl
+!ml/model/saved/risk_model.pkl
 ml/model/saved/*.joblib
