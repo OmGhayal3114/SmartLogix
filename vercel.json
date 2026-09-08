@@ -2,6 +2,10 @@
   "version": 2,
   "builds": [
     {
+      "src": "api/ml/*.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "backend/server.js",
       "use": "@vercel/node"
     },
@@ -11,6 +15,10 @@
     }
   ],
   "routes": [
+    {
+      "src": "/api/ml/(predict|health)",
+      "dest": "/api/ml/$1.py"
+    },
     {
       "src": "/api/(.*)",
       "dest": "backend/server.js"

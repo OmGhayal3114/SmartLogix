@@ -7,7 +7,14 @@ exports.predictRouteRisk = async (req, res, next) => {
       return res.status(400).json({ error: 'Origin and destination are required.' });
     }
 
-    const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+    // In production the ML functions live in the same Vercel deployment.
+    // Keep ML_SERVICE_URL configurable so a dedicated Render/Railway service
+    // can still be used when desired, while local development keeps using
+    // the FastAPI process on port 8000.
+    const mlUrl = (
+      process.env.ML_SERVICE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/ml` : 'http://localhost:8000')
+    ).replace(/\/$/, '');
 
     try {
       const mlResponse = await axios.post(`${mlUrl}/predict`, {
