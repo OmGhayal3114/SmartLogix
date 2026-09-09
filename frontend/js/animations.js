@@ -143,5 +143,9 @@ export function initAnimations() {
     initRipple();
     initSidebarIndicator();
     initRiskBars();
+    if (typeof window.initUlipSlider === 'function') {
+      window.initUlipSlider();
+    }
   });
 }
+

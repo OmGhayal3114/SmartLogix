@@ -826,3 +826,183 @@ body {
   .content { padding: 0 16px 36px; }
   .gov-stats-grid { grid-template-columns: 1fr 1fr; }
 }
+/* ============================================================
+   ULIP STYLE HERO IMAGE SLIDER / CAROUSEL
+   ============================================================ */
+
+.ulip-slider-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  background: #00152e;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.ulip-slider-viewport {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  overflow: hidden;
+}
+
+.ulip-slides-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ulip-slide {
+  position: relative;
+  min-width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.ulip-slide-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 1;
+}
+
+.ulip-slide-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0, 21, 46, 0.92) 0%, rgba(0, 33, 71, 0.75) 45%, rgba(0, 0, 0, 0.25) 100%);
+  z-index: 2;
+}
+
+.ulip-slide-content {
+  position: relative;
+  z-index: 3;
+  padding: 0 48px;
+  max-width: 760px;
+  color: #ffffff;
+}
+
+.ulip-slide-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  color: #fef08a;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 14px;
+}
+
+.ulip-slide-title {
+  font-size: clamp(24px, 3.8vw, 38px);
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+}
+
+.ulip-slide-title span {
+  color: #fef08a;
+}
+
+.ulip-slide-desc {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: #e2e8f0;
+  margin-bottom: 22px;
+  max-width: 620px;
+}
+
+.ulip-slide-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Slider Controls (Arrows) */
+.ulip-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 21, 46, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  backdrop-filter: blur(4px);
+}
+
+.ulip-nav-arrow:hover {
+  background: var(--gov-saffron);
+  color: #00152e;
+  border-color: var(--gov-saffron);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.ulip-arrow-prev { left: 16px; }
+.ulip-arrow-next { right: 16px; }
+
+/* Slider Dots / Indicators */
+.ulip-dots-wrap {
+  position: absolute;
+  bottom: 20px;
+  left: 48px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ulip-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.ulip-dot:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.ulip-dot.active {
+  width: 32px;
+  border-radius: 6px;
+  background: var(--gov-saffron);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+}
+
+@media (max-width: 768px) {
+  .ulip-slider-viewport { height: 420px; }
+  .ulip-slide-content { padding: 0 20px; }
+  .ulip-slide-title { font-size: 22px; }
+  .ulip-dots-wrap { left: 20px; bottom: 14px; }
+  .ulip-nav-arrow { width: 36px; height: 36px; font-size: 18px; }
+}

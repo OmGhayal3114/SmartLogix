@@ -1,4 +1,4 @@
-﻿// NER SmartLogix — Clean Portal Style Home Page
+// NER SmartLogix — Clean Portal Style Home Page
 
 import { state } from '../state.js';
 
@@ -6,36 +6,139 @@ export function renderHomePage() {
   const activeAlertsCount = state.top10Alerts.length || 10;
 
   return `
-  <!-- Portal Hero Banner -->
-  <div class="gov-hero-banner reveal">
-    <div class="gov-hero-container">
-      <div class="gov-eyebrow">
-        <span>🇮🇳</span> North Eastern Region Logistics & Corridor Intelligence
-      </div>
-      <h1 class="gov-hero-title">
-        Intelligent Logistics & Freight Navigation Across <br>
-        <span>Northeast India</span>
-      </h1>
-      <p class="gov-hero-sub">
-        Dedicated digital intelligence for commercial transport across the 8 North Eastern States (Assam, Arunachal Pradesh, Manipur, Meghalaya, Mizoram, Nagaland, Sikkim, Tripura). Real-time landslide detection, weather-aware route scoring, bridge clearance telemetry, and verified highway amenities.
-      </p>
+  <!-- ULIP-Inspired Hero Sliding Carousel -->
+  <div class="ulip-slider-wrap reveal" id="ulip-hero-slider">
+    <div class="ulip-slider-viewport">
+      <div class="ulip-slides-track" id="ulip-track">
 
-      <div class="gov-hero-actions">
-        <button class="btn primary" style="padding:11px 22px;font-size:13.5px" onclick="go('Plan Trip')">
-          <span>⇄</span> Plan Journey / Calculate Route →
-        </button>
-        <button class="btn saffron" style="padding:11px 20px;font-size:13.5px" onclick="openSectionPopup('Alerts')">
-          <span>⚠️</span> Active Hazard Alerts (${activeAlertsCount})
-        </button>
-        <button class="btn" style="padding:11px 20px;font-size:13.5px" onclick="go('Live Network')">
-          <span>◎</span> Live Corridor Map
-        </button>
-        <button class="btn" style="padding:11px 18px;font-size:13.5px" onclick="openSectionPopup('Help & Safety')">
-          <span>🚨</span> Emergency SOS (1033)
-        </button>
+        <!-- Slide 1: Multi-Axle Mountain Freight Carrier -->
+        <div class="ulip-slide">
+          <img class="ulip-slide-bg" src="/assets/vehicles/mountain-truck.jpg" alt="Heavy Mountain Freight Carrier in Meghalaya" />
+          <div class="ulip-slide-overlay"></div>
+          <div class="ulip-slide-content">
+            <div class="ulip-slide-badge">
+              <span>🇮🇳</span> NH27 & NH29 Mountain Freight Corridor
+            </div>
+            <h2 class="ulip-slide-title">
+              Commercial Mountain Logistics & <span>Slope Risk Telemetry</span>
+            </h2>
+            <p class="ulip-slide-desc">
+              Engineered route feasibility for multi-axle freight carriers traversing Meghalaya hill passes, Assam valley trunk routes, and high-gradient curves with real-time landslide warnings.
+            </p>
+            <div class="ulip-slide-actions">
+              <button class="btn saffron" style="padding:11px 22px;font-size:13.5px;font-weight:800" onclick="go('Plan Trip')">
+                ⇄ Plan Freight Journey →
+              </button>
+              <button class="btn" style="padding:11px 20px;font-size:13.5px;background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.4)" onclick="openSectionPopup('Alerts')">
+                ⚠️ Active Hazards (${activeAlertsCount})
+              </button>
+              <button class="btn" style="padding:11px 18px;font-size:13.5px;background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.4)" onclick="go('Live Network')">
+                ◎ Live Corridor Map
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 2: Refrigerated Perishable Express -->
+        <div class="ulip-slide">
+          <img class="ulip-slide-bg" src="/assets/vehicles/refrigerated-truck.jpg" alt="Refrigerated Cold Chain Truck on Brahmaputra River Bridge" />
+          <div class="ulip-slide-overlay"></div>
+          <div class="ulip-slide-content">
+            <div class="ulip-slide-badge">
+              <span>❄️</span> Brahmaputra Cold Chain & River Bridges
+            </div>
+            <h2 class="ulip-slide-title">
+              Temperature-Controlled Transit & <span>Bridge Clearance</span>
+            </h2>
+            <p class="ulip-slide-desc">
+              Priority corridors for agricultural produce, fresh tea shipments, and essential medical supplies crossing Bogibeel and Saraighat river crossings with verified weight limitations.
+            </p>
+            <div class="ulip-slide-actions">
+              <button class="btn saffron" style="padding:11px 22px;font-size:13.5px;font-weight:800" onclick="planWithVehicle('Refrigerated Truck')">
+                ⇄ Plan Reefer Route →
+              </button>
+              <button class="btn" style="padding:11px 20px;font-size:13.5px;background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.4)" onclick="openSectionPopup('Facilities')">
+                ◇ Verified Highway Amenities
+              </button>
+              <button class="btn" style="padding:11px 18px;font-size:13.5px;background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.4)" onclick="go('Plan Trip')">
+                Route Feasibility
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 3: Petroleum Mountain Tanker -->
+        <div class="ulip-slide">
+          <img class="ulip-slide-bg" src="/assets/vehicles/fuel-tanker.jpg" alt="Indian Oil Fuel Tanker navigating Nagaland Highway" />
+          <div class="ulip-slide-overlay"></div>
+          <div class="ulip-slide-content">
+            <div class="ulip-slide-badge">
+              <span>⛽</span> Essential Petroleum & Hazmat Fleet
+            </div>
+            <h2 class="ulip-slide-title">
+              Fuel Supply Chain & <span>Hazard Mitigation Radar</span>
+            </h2>
+            <p class="ulip-slide-desc">
+              Ensuring uninterrupted energy supply across Dimapur-Kohima-Imphal national corridors with automated steep-gradient caution advisories and breakdown response.
+            </p>
+            <div class="ulip-slide-actions">
+              <button class="btn saffron" style="padding:11px 22px;font-size:13.5px;font-weight:800" onclick="planWithVehicle('Tanker')">
+                ⇄ Tanker Route Feasibility →
+              </button>
+              <button class="btn" style="padding:11px 20px;font-size:13.5px;background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.4)" onclick="openSectionPopup('Help & Safety')">
+                🚨 Emergency Driver SOS (1033)
+              </button>
+              <button class="btn" style="padding:11px 18px;font-size:13.5px;background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.4)" onclick="go('Live Network')">
+                Corridor Telemetry
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 4: All-Terrain 4x4 Hill Freighter -->
+        <div class="ulip-slide">
+          <img class="ulip-slide-bg" src="/assets/vehicles/cargo-pickup.jpg" alt="Commercial 4x4 Cargo Pickup in Arunachal Pradesh" />
+          <div class="ulip-slide-overlay"></div>
+          <div class="ulip-slide-content">
+            <div class="ulip-slide-badge">
+              <span>🏔️</span> Frontier & Last-Mile Connectivity
+            </div>
+            <h2 class="ulip-slide-title">
+              High-Altitude 4x4 Logistics for <span>Arunachal & Sikkim</span>
+            </h2>
+            <p class="ulip-slide-desc">
+              Rugged all-weather commercial routing through Sela Pass, Tawang, and border district routes with continuous cloudburst monitoring and unpaved terrain warnings.
+            </p>
+            <div class="ulip-slide-actions">
+              <button class="btn saffron" style="padding:11px 22px;font-size:13.5px;font-weight:800" onclick="planWithVehicle('Pickup')">
+                ⇄ Plan 4x4 Hill Journey →
+              </button>
+              <button class="btn" style="padding:11px 20px;font-size:13.5px;background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.4)" onclick="go('Plan Trip')">
+                Interactive Route Scoring
+              </button>
+              <button class="btn" style="padding:11px 18px;font-size:13.5px;background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.4)" onclick="openSectionPopup('Alerts')">
+                Landslide Warnings
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Navigation Arrows -->
+      <button class="ulip-nav-arrow ulip-arrow-prev" onclick="prevUlipSlide()" aria-label="Previous Slide">‹</button>
+      <button class="ulip-nav-arrow ulip-arrow-next" onclick="nextUlipSlide()" aria-label="Next Slide">›</button>
+
+      <!-- Slide Indicator Dots -->
+      <div class="ulip-dots-wrap">
+        <div class="ulip-dot active" onclick="setUlipSlide(0)" title="Slide 1: Mountain Freight"></div>
+        <div class="ulip-dot" onclick="setUlipSlide(1)" title="Slide 2: Cold Chain"></div>
+        <div class="ulip-dot" onclick="setUlipSlide(2)" title="Slide 3: Petroleum Tanker"></div>
+        <div class="ulip-dot" onclick="setUlipSlide(3)" title="Slide 4: 4x4 Hill Logistics"></div>
       </div>
     </div>
   </div>
+
 
   <section class="content">
 
@@ -283,6 +386,69 @@ export function renderHomePage() {
 
   </section>`;
 }
+
+// ─── ULIP SLIDER INTERACTION LOGIC ──────────────────────────────────────────
+let currentUlipSlide = 0;
+let ulipAutoTimer = null;
+const ULIP_SLIDE_COUNT = 4;
+
+export function setUlipSlide(idx) {
+  const track = document.getElementById('ulip-track');
+  const dots = document.querySelectorAll('.ulip-dot');
+  if (!track) return;
+  currentUlipSlide = (idx + ULIP_SLIDE_COUNT) % ULIP_SLIDE_COUNT;
+  track.style.transform = `translateX(-${currentUlipSlide * 100}%)`;
+  dots.forEach((d, i) => {
+    if (i === currentUlipSlide) d.classList.add('active');
+    else d.classList.remove('active');
+  });
+}
+
+export function nextUlipSlide() {
+  setUlipSlide(currentUlipSlide + 1);
+}
+
+export function prevUlipSlide() {
+  setUlipSlide(currentUlipSlide - 1);
+}
+
+export function initUlipSlider() {
+  if (ulipAutoTimer) {
+    clearInterval(ulipAutoTimer);
+    ulipAutoTimer = null;
+  }
+  const slider = document.getElementById('ulip-hero-slider');
+  if (!slider) return;
+
+  setUlipSlide(currentUlipSlide || 0);
+
+  // Auto-advance every 5.5 seconds
+  ulipAutoTimer = setInterval(() => {
+    nextUlipSlide();
+  }, 5500);
+
+  // Pause on hover
+  if (!slider.dataset.sliderListeners) {
+    slider.dataset.sliderListeners = '1';
+    slider.addEventListener('mouseenter', () => {
+      if (ulipAutoTimer) {
+        clearInterval(ulipAutoTimer);
+        ulipAutoTimer = null;
+      }
+    });
+    slider.addEventListener('mouseleave', () => {
+      if (ulipAutoTimer) clearInterval(ulipAutoTimer);
+      ulipAutoTimer = setInterval(() => {
+        nextUlipSlide();
+      }, 5500);
+    });
+  }
+}
+
+window.setUlipSlide = setUlipSlide;
+window.nextUlipSlide = nextUlipSlide;
+window.prevUlipSlide = prevUlipSlide;
+window.initUlipSlider = initUlipSlider;
 
 window.planWithVehicle = (v) => {
   state.vehicleType = v;
