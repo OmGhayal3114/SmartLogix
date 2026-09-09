@@ -17,7 +17,7 @@
   "routes": [
     {
       "src": "/api/ml/(predict|health)",
-      "dest": "/api/ml/$1.py"
+      "dest": "api/ml/$1.py"
     },
     {
       "src": "/api/(.*)",
