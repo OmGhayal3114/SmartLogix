@@ -88,7 +88,10 @@ export function renderLivePage() {
             : risk
             ? `<div class="eyebrow">${t('live.routeRisk')}</div>
                <div style="font-size:22px;font-weight:bold;color:${riskColor};margin:8px 0">${Number(risk.score || 0).toFixed(1)}/100 ROUTE RISK</div>
-               <p style="font-size:12px;color:#94a3b8;line-height:1.6">
+               <div class="risk-bar-track">
+                 <div class="risk-bar-fill" data-risk-score="${Number(risk.score || 0).toFixed(1)}" style="width:0%"></div>
+               </div>
+               <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:10px">
                  ${esc(risk.recommendation || risk.reason || 'Route risk assessment available.')}
                </p>
                ${Array.isArray(risk.reasons) && risk.reasons.length

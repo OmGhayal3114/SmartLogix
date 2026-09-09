@@ -3,6 +3,7 @@
 import { state } from './state.js';
 import { t } from './i18n.js';
 import { renderAuthModal } from './auth.js';
+import { initAnimations } from './animations.js';
 
 const PAGES = ['Plan Trip', 'Live Network', 'My Trip', 'Facilities', 'Alerts', 'Help & Safety', 'Feedback'];
 const PAGE_ICONS = {
@@ -173,6 +174,9 @@ export async function render() {
     `<main>${topbar()}<div id="page-content">${content}</div></main>` +
     toastEl() +
     renderAuthModal();
+
+  // Wire up all animations after every render
+  initAnimations();
 }
 
 // Expose render globally so auth.js and pages can call it

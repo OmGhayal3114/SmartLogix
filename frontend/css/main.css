@@ -588,3 +588,326 @@ b { font-weight: 600; }
   .help-grid { grid-template-columns: 1fr; }
   .toast { left: 16px; right: 16px; bottom: 16px; }
 }
+
+/* ============================================================
+   ANIMATIONS & INTERACTIVITY
+   ============================================================ */
+
+/* ── 1. PAGE TRANSITION ── */
+#page-content {
+  transition: none;
+}
+
+.page-enter {
+  animation: pageSlideIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── 2. SCROLL REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 3. CARD HOVER GLOW + LIFT ── */
+.card {
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease, background 0.22s ease;
+}
+.card:hover {
+  border-color: #5eead430;
+  box-shadow: 0 4px 32px #5eead40d, 0 1px 8px #00000040;
+  transform: translateY(-2px);
+}
+
+.route {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.route:hover {
+  border-color: #5eead455;
+  box-shadow: 0 6px 28px #5eead412, 0 2px 8px #00000040;
+  transform: translateY(-3px);
+}
+
+.alert {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border-left: 3px solid transparent;
+}
+.alert:hover {
+  border-color: #fb923c66;
+  border-left-color: #fb923c;
+  box-shadow: 0 4px 20px #fb923c0a;
+}
+
+.trip {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.trip:hover {
+  border-color: #5eead455;
+  box-shadow: 0 6px 28px #5eead412;
+  transform: translateY(-2px);
+}
+
+.facility {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.facility:hover {
+  border-color: #5eead455;
+  box-shadow: 0 4px 18px #5eead40d;
+  transform: translateY(-2px);
+}
+
+.help {
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.help:hover {
+  border-color: #5eead455;
+  background: #5eead40c;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px #5eead410;
+}
+
+/* ── 4. BUTTON RIPPLE ── */
+.btn, .nav button, .side-bottom button, .topbar-actions button {
+  transition: background 0.18s ease, border-color 0.18s ease,
+              box-shadow 0.18s ease, transform 0.12s ease;
+}
+.btn:active, .nav button:active { transform: scale(0.97); }
+
+.ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  transform: scale(0);
+  animation: rippleAnim 0.6s linear forwards;
+}
+
+@keyframes rippleAnim {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* ── 5. SIDEBAR NAV INDICATOR ── */
+.nav-indicator {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #5eead418, #5eead408);
+  border: 1px solid #5eead428;
+  box-shadow: 0 0 12px #5eead414;
+  pointer-events: none;
+  z-index: 0;
+  transition: top 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              height 0.2s ease;
+}
+
+/* Ensure nav buttons sit above the indicator */
+.nav button { z-index: 1; }
+
+/* Nav button hover sweep */
+.nav button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(90deg, transparent, #5eead412, transparent);
+  transform: translateX(-100%);
+  transition: transform 0.4s ease;
+}
+.nav button:hover::before {
+  transform: translateX(100%);
+}
+
+/* ── 6. ALERT COUNT BADGE PULSE ── */
+.count {
+  animation: badgePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 #fb923c55;
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 5px #fb923c00;
+    transform: scale(1.08);
+  }
+}
+
+/* ── 7. SKELETON SHIMMER LOADING ── */
+.skeleton-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.skeleton-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #ffffff0a 40%,
+    #ffffff14 50%,
+    #ffffff0a 60%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── 8. RISK SCORE PROGRESS BAR ── */
+.risk-bar-track {
+  height: 6px;
+  background: #ffffff0c;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.risk-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #34d399, #fb923c, #ef4444);
+  background-size: 200% 100%;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── 9. SIDEBAR LOGO ENTRANCE ── */
+.side-logo {
+  animation: logoFadeIn 0.6s ease both;
+}
+
+@keyframes logoFadeIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── 10. TOAST SLIDE IN / OUT ── */
+.toast {
+  animation: toastIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── SPLASH LOGO PULSE ── */
+.splash-logo {
+  animation: splashPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes splashPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(1.08); }
+}
+
+/* ── BADGE ENTRANCE ── */
+.badge {
+  animation: badgeFadeIn 0.3s ease both;
+}
+
+@keyframes badgeFadeIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── MODAL ENTRANCE ── */
+.modal-box {
+  animation: modalIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── EMPTY STATE BOUNCE ── */
+.empty > div > div:first-child {
+  animation: emptyBounce 3s ease-in-out infinite;
+}
+
+@keyframes emptyBounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+/* ── TOPBAR ENTRANCE ── */
+.topbar {
+  animation: topbarIn 0.4s ease both;
+}
+
+@keyframes topbarIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SIDEBAR ENTRANCE ── */
+.sidebar {
+  animation: sidebarIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sidebarIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* On mobile open, override the animation to stay visible */
+@media (max-width: 900px) {
+  .sidebar { animation: none; }
+}
+
+/* ── INPUT FOCUS GLOW ── */
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: #5eead466;
+  box-shadow: 0 0 0 3px #5eead414;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ── SECTION HEAD ANIMATED UNDERLINE ── */
+.section-head h2 {
+  position: relative;
+  display: inline-block;
+}
+.section-head h2::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -4px;
+  width: 0; height: 2px;
+  background: linear-gradient(90deg, var(--teal), transparent);
+  border-radius: 1px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.revealed .section-head h2::after,
+.section-head.revealed h2::after {
+  width: 60%;
+}
