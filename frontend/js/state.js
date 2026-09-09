@@ -2,7 +2,7 @@
 
 export const state = {
   // Navigation
-  page: 'Plan Trip',
+  page: 'Home',
   menu: false,
 
   // Auth

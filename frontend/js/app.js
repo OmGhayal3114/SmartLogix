@@ -29,9 +29,12 @@ function showOfflineBanner() {
   const banner = document.createElement('div');
   banner.id = 'offline-banner';
   banner.innerHTML = `
-    <div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#1a0a0a;border-bottom:2px solid #ef444466;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-family:system-ui;font-size:13px;color:#fca5a5">
-      <span>⚠ &nbsp; Backend server is connecting or not reachable. ${isLocal ? 'Start it with: <code style="background:#0b0f1a;padding:2px 8px;border-radius:4px;color:#5eead4">cd C:\\smartlogix\\backend &amp;&amp; node server.js</code>' : 'Please verify cloud database connectivity.'}</span>
-      <button onclick="location.reload()" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Retry</button>
+    <div style="position:fixed;bottom:20px;left:20px;right:20px;max-width:850px;margin:0 auto;z-index:99999;background:rgba(26,10,10,0.96);backdrop-filter:blur(12px);border:1px solid #ef444488;border-radius:12px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:system-ui;font-size:13px;color:#fca5a5;box-shadow:0 12px 36px rgba(0,0,0,0.6)">
+      <span>⚠ &nbsp; <strong>Backend offline:</strong> ${isLocal ? 'Start it with: <code style="background:#0b0f1a;padding:2px 8px;border-radius:4px;color:#5eead4">cd backend &amp;&amp; npm start</code>' : 'Please verify cloud database connectivity.'}</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="location.reload()" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Retry</button>
+        <button onclick="document.getElementById('offline-banner').remove()" style="background:transparent;color:#fca5a5;border:1px solid #ef444466;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px">✕</button>
+      </div>
     </div>`;
   document.body.prepend(banner);
 }
