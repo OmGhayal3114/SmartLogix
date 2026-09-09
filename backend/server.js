@@ -1,4 +1,6 @@
-require('dotenv').config({ path: '../.env' });
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -42,7 +44,7 @@ async function ensureDbConnected() {
       bufferCommands: false
     }).then(() => {
       console.log('✓ MongoDB connected');
-      if (!process.env.VERCEL) alertCron.start();
+      alertCron.start();
     }).catch(err => {
       cachedDbPromise = null;
       throw err;

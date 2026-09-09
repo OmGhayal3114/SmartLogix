@@ -4,6 +4,7 @@ export const state = {
   // Navigation
   page: 'Home',
   menu: false,
+  activePopupSection: null,
 
   // Auth
   user: null,   // { _id, name, email, phone, preferredLanguage }
