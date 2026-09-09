@@ -4,7 +4,6 @@
 import { state } from './state.js';
 import { t } from './i18n.js';
 import { renderAuthModal } from './auth.js';
-import { initAnimations } from './animations.js';
 
 export const NAV_ITEMS = [
   { id: 'Home', label: 'Home', i18nKey: 'nav.home', icon: 'home' },
@@ -19,15 +18,15 @@ export const NAV_ITEMS = [
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
-  { code: 'hi', label: 'हिंदी (Hindi)' },
-  { code: 'as', label: 'অসমীয়া (Assamese)' },
-  { code: 'bn', label: 'বাংলা (Bengali)' },
+  { code: 'hi', label: 'हिंदी' },
+  { code: 'as', label: 'অসমীয়া' },
+  { code: 'bn', label: 'বাংলা' },
   { code: 'brx', label: 'Bodo' },
-  { code: 'mni', label: 'মেইতেই (Manipuri)' },
+  { code: 'mni', label: 'মেইতেই' },
   { code: 'kha', label: 'Khasi' },
   { code: 'grt', label: 'Garo' },
   { code: 'lus', label: 'Mizo' },
-  { code: 'ne', label: 'नेपाली (Nepali)' },
+  { code: 'ne', label: 'नेपाली' },
   { code: 'kok', label: 'Kokborok' }
 ];
 
@@ -758,8 +757,8 @@ async function pageContent() {
       return renderFeedbackPage();
     }
     default: {
-      const { renderHomePage } = await import('./pages/home.js');
-      return renderHomePage();
+      const { renderPlanPage } = await import('./pages/plan.js');
+      return renderPlanPage();
     }
   }
 }

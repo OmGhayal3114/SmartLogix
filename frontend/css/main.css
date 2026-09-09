@@ -50,11 +50,6 @@ html {
   scroll-behavior: smooth;
 }
 
-html {
-  scroll-behavior: smooth;
-  font-size: 14px;
-}
-
 body {
   background-color: var(--bg);
   color: var(--text);
@@ -1348,8 +1343,7 @@ a {
 .footer-meta-links {
   display: flex;
   align-items: center;
-  overflow-x: auto;
-  white-space: nowrap;
+  gap: 10px;
 }
 
 .meta-sep {
@@ -1503,7 +1497,6 @@ a {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  border-top: 3px solid var(--gov-blue);
 }
 
 /* Grid Systems */
@@ -1526,13 +1519,12 @@ a {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
 .field label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gov-navy);
+  font-size: 11px;
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.8px;
   font-weight: 600;
@@ -1615,11 +1607,11 @@ a {
 
 /* Badges */
 .badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  display: inline-block;
+  font-size: 10px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
   padding: 3px 8px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.06);
@@ -1647,15 +1639,11 @@ a {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
 }
 
-.route-pill {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 4px 10px;
-  font-size: 11.5px;
+.route-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
 }
 
 .route-grid div {
@@ -1782,13 +1770,16 @@ a {
   color: var(--muted);
   font-size: 10px;
   text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
 
 /* Row & Empty State */
 .row {
   display: flex;
-  flex-direction: column;
-  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .empty {
@@ -1879,7 +1870,6 @@ a {
   border-radius: var(--radius-xl);
   padding: 32px;
   width: 100%;
-  max-width: 950px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
@@ -2124,12 +2114,4 @@ b { font-weight: 600; }
     bottom: 16px;
     max-width: calc(100% - 32px);
   }
-}
-
-@media (max-width: 768px) {
-  .ulip-slider-viewport { height: 420px; }
-  .ulip-slide-content { padding: 0 20px; }
-  .ulip-slide-title { font-size: 22px; }
-  .ulip-dots-wrap { left: 20px; bottom: 14px; }
-  .ulip-nav-arrow { width: 36px; height: 36px; font-size: 18px; }
 }
