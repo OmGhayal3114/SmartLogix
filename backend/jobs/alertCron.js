@@ -9,6 +9,7 @@ exports.start = () => {
     console.log('[Cron] Running five-minute NER alert update...');
     try {
       await alertAggregator.aggregate();
+      await alertAggregator.seedSampleAlerts();
     } catch (err) {
       console.error('[Cron] Alert update failed:', err.message);
     }
@@ -19,10 +20,11 @@ exports.start = () => {
     console.log('[Startup] Running initial alert aggregation...');
     try {
       await alertAggregator.aggregate();
+      await alertAggregator.seedSampleAlerts();
     } catch (err) {
       console.error('[Startup] Initial alert aggregation failed:', err.message);
     }
-  }, 5000);
+  }, 3000);
 
   console.log('[Cron] NER alert update scheduled every 5 minutes.');
 };
