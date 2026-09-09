@@ -5,14 +5,24 @@ import { api } from '../api.js';
 import { t } from '../i18n.js';
 
 const VEHICLES = [
-  { value: 'Truck', icon: '🚛' },
   { value: 'Heavy Truck', icon: '🚚' },
-  { value: 'Mini Truck', icon: '🚐' },
-  { value: 'Cargo Van', icon: '📦' },
-  { value: 'Pickup', icon: '🛻' },
   { value: 'Refrigerated Truck', icon: '❄️' },
-  { value: 'Tanker', icon: '⛽' }
+  { value: 'Tanker', icon: '⛽' },
+  { value: 'Pickup', icon: '🛻' },
+  { value: 'Truck', icon: '🚛' },
+  { value: 'Mini Truck', icon: '🚐' },
+  { value: 'Cargo Van', icon: '📦' }
 ];
+
+const VEHICLE_PREVIEWS = {
+  'Heavy Truck': { img: '/assets/vehicles/mountain-truck.jpg', label: 'Multi-axle mountain freight (up to 25T)', tag: 'Hill Climbing' },
+  'Refrigerated Truck': { img: '/assets/vehicles/refrigerated-truck.jpg', label: 'Cold chain perishable express (14T)', tag: 'River Bridge' },
+  'Tanker': { img: '/assets/vehicles/fuel-tanker.jpg', label: 'Petroleum fuel mountain tanker (12,000L)', tag: 'Hazmat Safe' },
+  'Pickup': { img: '/assets/vehicles/cargo-pickup.jpg', label: '4x4 rugged hill cargo pickup (2.5T)', tag: 'Arunachal Pass' },
+  'Truck': { img: '/assets/vehicles/mountain-truck.jpg', label: 'Standard commercial freight (16T)', tag: 'NH27 Valley' },
+  'Mini Truck': { img: '/assets/vehicles/cargo-pickup.jpg', label: 'Agile hill cargo transporter (1.5T)', tag: 'Narrow Roads' },
+  'Cargo Van': { img: '/assets/vehicles/refrigerated-truck.jpg', label: 'Secured parcel container van (3.5T)', tag: 'Highway Transit' }
+};
 
 function esc(s) {
   return String(s || '').replace(/[&<>"']/g, m =>
@@ -20,6 +30,8 @@ function esc(s) {
 }
 
 export function renderPlanPage() {
+  const currentVehicle = VEHICLE_PREVIEWS[state.vehicleType] || VEHICLE_PREVIEWS['Heavy Truck'];
+
   return `
   <section class="content">
 
@@ -30,8 +42,8 @@ export function renderPlanPage() {
       <p class="hero-sub">${t('plan.subtitle')}</p>
       <div class="hero-actions">
         <span class="badge info">◉ OSRM Routing</span>
-        <span class="badge success">⚡ Risk Scoring Active</span>
-        <span class="badge">${VEHICLES.length} Vehicle Types</span>
+        <span class="badge success">⚡ Real-Time Hazards</span>
+        <span class="badge">${VEHICLES.length} Vehicle Classes</span>
       </div>
     </div>
 
@@ -66,9 +78,18 @@ export function renderPlanPage() {
 
           <div class="field">
             <label>${t('plan.vehicle')}</label>
-            <select id="vehicle-select" onchange="state.vehicleType=this.value">
+            <select id="vehicle-select" onchange="state.vehicleType=this.value; render()">
               ${VEHICLES.map(v => `<option value="${v.value}" ${v.value === state.vehicleType ? 'selected' : ''}>${v.icon} ${v.value}</option>`).join('')}
             </select>
+          </div>
+
+          <!-- Vehicle Real Photo Preview (Requirement #2) -->
+          <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg-subtle)">
+            <img src="${currentVehicle.img}" style="width:100%;height:130px;object-fit:cover;display:block" alt="${state.vehicleType}">
+            <div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:#fff;border-top:1px solid var(--border)">
+              <span style="font-size:12px;font-weight:600;color:var(--text-muted)">${currentVehicle.label}</span>
+              <span class="badge info" style="font-size:10px">${currentVehicle.tag}</span>
+            </div>
           </div>
 
           <div class="field">

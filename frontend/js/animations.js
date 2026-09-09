@@ -31,7 +31,8 @@ export function initScrollReveal() {
   // Add reveal class to cards/items that should animate in
   const selectors = [
     '.card', '.route', '.alert', '.trip', '.facility', '.help',
-    '.section-head', '.detail', '.plan-grid > *', '.grid > *'
+    '.section-head', '.detail', '.plan-grid > *', '.grid > *',
+    '.fleet-card', '.stat-card'
   ];
   const elements = document.querySelectorAll(selectors.join(', '));
   elements.forEach((el, i) => {
