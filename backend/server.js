@@ -42,7 +42,7 @@ async function ensureDbConnected() {
       bufferCommands: false
     }).then(() => {
       console.log('✓ MongoDB connected');
-      if (!process.env.VERCEL) alertCron.start();
+      alertCron.start();
     }).catch(err => {
       cachedDbPromise = null;
       throw err;
