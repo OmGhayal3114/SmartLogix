@@ -1,4 +1,4 @@
-﻿// NER SmartLogix — Government of India Official Render Engine
+﻿// NER SmartLogix — Modern Logistics Portal (Official Public Portal Style)
 
 import { state } from './state.js';
 import { t } from './i18n.js';
@@ -8,14 +8,14 @@ import { initAnimations } from './animations.js';
 const PAGES = ['Home', 'Plan Trip', 'Live Network', 'My Trip', 'Facilities', 'Alerts', 'Help & Safety', 'Feedback'];
 
 const PAGE_META = {
-  'Home': { en: 'Home', hi: 'मुख्य पृष्ठ', icon: '🏛️' },
-  'Plan Trip': { en: 'Plan Journey', hi: 'यात्रा योजना', icon: '⇄' },
-  'Live Network': { en: 'Live Network Map', hi: 'लाइव मैप', icon: '◎' },
-  'My Trip': { en: 'My Trips & Permits', hi: 'मेरी यात्राएं', icon: '📋' },
-  'Facilities': { en: 'Highway Amenities', hi: 'राजमार्ग सुविधाएं', icon: '◇' },
-  'Alerts': { en: 'Hazard Alerts', hi: 'आपदा व मौसम अलर्ट', icon: '⚠️' },
-  'Help & Safety': { en: 'Driver SOS 1033', hi: 'चालक सहायता 1033', icon: '✚' },
-  'Feedback': { en: 'Grievance / Feedback', hi: 'जन शिकायत', icon: '↗' }
+  'Home': { label: 'Home', icon: '🏛️' },
+  'Plan Trip': { label: 'Plan Trip', icon: '⇄' },
+  'Live Network': { label: 'Live Map', icon: '◎' },
+  'Facilities': { label: 'Facilities', icon: '◇' },
+  'Alerts': { label: 'Alerts', icon: '⚠️' },
+  'My Trip': { label: 'My Trips', icon: '📋' },
+  'Help & Safety': { label: 'Safety & SOS', icon: '✚' },
+  'Feedback': { label: 'Feedback', icon: '↗' }
 };
 
 const LANGUAGES = [
@@ -38,8 +38,8 @@ export function notify(message, type = 'success') {
   setTimeout(() => { state.toast = { message: '', type: 'success' }; render(); }, 3500);
 }
 
-// ─── 1. TOP ACCESSIBILITY STRIP & NATIONAL TRICOLOR ─────────────────────────
-function topAccessibilityBar() {
+// ─── 1. TOP UTILITY STRIP WITH TRICOLOR ACCENT ──────────────────────────────
+function topUtilityBar() {
   const istTime = new Date().toLocaleDateString('en-IN', {
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
   });
@@ -47,69 +47,70 @@ function topAccessibilityBar() {
   return `
   <div class="gov-tricolor-bar"></div>
   <div class="gov-top-bar">
-    <div style="display:flex;align-items:center;gap:14px">
-      <span><b>भारत सरकार</b> | Government of India</span>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-weight:700;color:#002147">NER Logistics Portal</span>
       <span style="color:#cbd5e1">|</span>
-      <span>${istTime} (IST)</span>
+      <span>North Eastern Region Highway Intelligence</span>
+      <span style="color:#cbd5e1">|</span>
+      <span>${istTime}</span>
     </div>
     <div class="gov-access-controls">
-      <span>Text Size:</span>
+      <span>Font:</span>
       <button class="access-btn" onclick="document.body.style.fontSize='13px'" title="Decrease Font">A-</button>
       <button class="access-btn" onclick="document.body.style.fontSize='14px'" title="Normal Font">A</button>
       <button class="access-btn" onclick="document.body.style.fontSize='15px'" title="Increase Font">A+</button>
       <span style="color:#cbd5e1">|</span>
-      <a href="javascript:void(0)" onclick="go('Help & Safety')">Screen Reader Access</a>
-      <span style="color:#cbd5e1">|</span>
-      <a href="javascript:void(0)" onclick="go('Feedback')">Grievances</a>
+      <select class="gov-lang-select" onchange="changeLang(this.value)">
+        ${LANGUAGES.map(l => `<option value="${l.code}" ${state.language === l.code ? 'selected' : ''}>${l.label}</option>`).join('')}
+      </select>
     </div>
   </div>`;
 }
 
-// ─── 2. OFFICIAL MINISTRY HEADER (Ashoka Lion Capital Emblem) ───────────────
-function ministryHeader() {
+// ─── 2. PORTAL BRANDING HEADER ──────────────────────────────────────────────
+function portalHeader() {
   return `
   <div class="gov-ministry-header">
     <div class="gov-header-container">
       <a href="javascript:void(0)" class="gov-brand-wrap" onclick="go('Home')">
-        <!-- National Emblem of India (Ashoka Lion Capital) -->
-        <svg class="emblem-svg" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
-          <g fill="#fef08a" stroke="#d97706" stroke-width="1.5">
-            <path d="M50 8 C40 8, 30 18, 30 32 C30 42, 38 52, 50 54 C62 52, 70 42, 70 32 C70 18, 60 8, 50 8 Z" fill="#facc15" />
-            <circle cx="50" cy="30" r="14" fill="#eab308" />
-            <path d="M22 28 C14 34, 18 52, 28 56 C34 50, 32 38, 22 28 Z" fill="#facc15" />
-            <path d="M78 28 C86 34, 82 52, 72 56 C66 50, 68 38, 78 28 Z" fill="#facc15" />
-            <rect x="24" y="58" width="52" height="12" rx="3" fill="#eab308" />
-            <circle cx="50" cy="64" r="5" fill="#1e3a8a" stroke="#ffffff" stroke-width="1" />
-            <rect x="18" y="74" width="64" height="8" rx="2" fill="#ca8a04" />
-          </g>
-          <text x="50" y="96" font-family="'Segoe UI', sans-serif" font-size="11" font-weight="900" fill="#fef08a" text-anchor="middle">सत्यमेव जयते</text>
-          <text x="50" y="108" font-family="'Segoe UI', sans-serif" font-size="7.5" font-weight="700" fill="#e2e8f0" text-anchor="middle">GOVERNMENT OF INDIA</text>
-        </svg>
-
+        <div style="width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#ff9933,#d97706);color:#00152e;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;box-shadow:0 2px 8px rgba(0,0,0,0.3)">
+          ◉
+        </div>
         <div class="gov-title-stack">
-          <div class="gov-title-hi">सड़क परिवहन और राजमार्ग मंत्रालय एवं पूर्वोत्तर क्षेत्र विकास मंत्रालय</div>
-          <div class="gov-title-en">Ministry of Road Transport and Highways & Ministry of Development of NER</div>
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#cbd5e1;font-weight:700">
+            Northeast Corridor Intelligence
+          </div>
           <div class="gov-portal-name">
-            <span>राष्ट्रीय रसद आसूचना मंच —</span> NER SmartLogix Portal
+            NER <span>SmartLogix</span>
+          </div>
+          <div style="font-size:11.5px;color:#94a3b8">
+            Freight & Highway Logistics Platform · 8 North Eastern States
           </div>
         </div>
       </a>
 
       <div class="gov-badges-right">
-        <div class="initiative-badge" style="border-color:#fef08a;color:#fef08a">
-          <span>⚡ PM GatiShakti</span>
+        <div class="initiative-badge">
+          <span>⚡ Live OSRM Routing</span>
         </div>
         <div class="initiative-badge">
-          <span>🇮🇳 Digital India</span>
+          <span>🛰 IMD Weather & Hazards</span>
         </div>
+        ${state.user
+          ? `<button class="gov-btn-login" onclick="go('My Trip')">
+               <span>👤</span> ${esc(state.user.name)}
+             </button>`
+          : `<button class="gov-btn-login" onclick="openAuth('login')">
+               <span>🔐</span> Driver Login
+             </button>`
+        }
       </div>
     </div>
   </div>`;
 }
 
-// ─── 3. OFFICIAL HORIZONTAL NAVIGATION MENU ─────────────────────────────────
-function governmentNavbar() {
-  const initial = state.user?.name ? state.user.name[0].toUpperCase() : 'U';
+// ─── 3. TOP HORIZONTAL NAVIGATION BAR ───────────────────────────────────────
+function navigationBar() {
   const alertCount = state.top10Alerts.length;
 
   return `
@@ -117,45 +118,30 @@ function governmentNavbar() {
     <div class="gov-nav-container">
       <div class="gov-nav-links">
         ${PAGES.map(p => {
-          const meta = PAGE_META[p] || { en: p, hi: p, icon: '•' };
+          const meta = PAGE_META[p] || { label: p, icon: '•' };
           return `
           <button class="${state.page === p ? 'active' : ''}" onclick="go('${p}')">
             <span>${meta.icon}</span>
-            <span>${meta.hi} / ${meta.en}</span>
+            <span>${meta.label}</span>
             ${p === 'Alerts' && alertCount ? `<span class="gov-nav-badge">${alertCount}</span>` : ''}
           </button>`;
         }).join('')}
-      </div>
-
-      <div class="gov-nav-right">
-        <select class="gov-lang-select" onchange="changeLang(this.value)">
-          ${LANGUAGES.map(l => `<option value="${l.code}" ${state.language === l.code ? 'selected' : ''}>${l.label}</option>`).join('')}
-        </select>
-
-        ${state.user
-          ? `<button class="gov-btn-login" onclick="go('My Trip')">
-               <span>👤</span> ${esc(state.user.name)}
-             </button>`
-          : `<button class="gov-btn-login" onclick="openAuth('login')">
-               <span>🔐</span> Parivahan Login
-             </button>`
-        }
       </div>
     </div>
   </nav>`;
 }
 
-// ─── 4. LIVE EMERGENCY ALERT MARQUEE TICKER ─────────────────────────────────
-function alertTickerMarquee() {
+// ─── 4. LIVE CORRIDOR ALERTS MARQUEE ────────────────────────────────────────
+function alertMarqueeTicker() {
   const alerts = state.top10Alerts;
   const marqueeText = alerts.length > 0
     ? alerts.map(a => `[${a.state || 'NER'}] ${a.title} — ${a.alertType} (${a.severity})`).join(' &nbsp;&nbsp; | &nbsp;&nbsp; ')
-    : 'No active critical road closures reported. Monsoon surveillance active on NH27, NH29, and NH37 corridors. Drive with caution in hill districts.';
+    : 'All major NER highways operational. Monsoon weather surveillance active on NH27, NH29, and NH37 corridors. Drive cautiously on hill roads.';
 
   return `
   <div class="gov-ticker-wrap">
     <div class="gov-ticker-badge">
-      <span>⚠️</span> महत्वपूर्ण सूचना / ALERT
+      <span>⚠️</span> LIVE ALERTS
     </div>
     <div class="gov-ticker-marquee">
       <div class="gov-ticker-content">
@@ -163,7 +149,7 @@ function alertTickerMarquee() {
       </div>
     </div>
     <button class="link" style="font-size:11px;font-weight:700;color:#b91c1c;padding:0 14px;white-space:nowrap" onclick="openSectionPopup('Alerts')">
-      सभी अलर्ट देखें / View All Alerts →
+      View All Alerts (${alerts.length}) →
     </button>
   </div>`;
 }
@@ -173,7 +159,7 @@ async function renderSectionPopup() {
   if (!state.activePopupSection) return '';
   
   const sectionName = state.activePopupSection;
-  const meta = PAGE_META[sectionName] || { en: sectionName, hi: sectionName, icon: '◉' };
+  const meta = PAGE_META[sectionName] || { label: sectionName, icon: '◉' };
   let sectionHtml = '';
   
   try {
@@ -227,8 +213,8 @@ async function renderSectionPopup() {
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:20px">${meta.icon}</span>
           <div>
-            <b style="font-size:16px;color:var(--gov-navy)">${meta.hi} / ${meta.en}</b>
-            <div style="font-size:11px;color:#64748b">Official Government of India Logistics Service</div>
+            <b style="font-size:16px;color:var(--gov-navy)">${meta.label}</b>
+            <div style="font-size:11px;color:#64748b">NER SmartLogix Service Window</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
@@ -243,68 +229,66 @@ async function renderSectionPopup() {
   </div>`;
 }
 
-// ─── 6. OFFICIAL 4-COLUMN GOVERNMENT FOOTER ─────────────────────────────────
-function officialGovernmentFooter() {
-  const currentYear = new Date().getFullYear();
-
+// ─── 6. CLEAN, PROFESSIONAL PORTAL FOOTER ───────────────────────────────────
+function portalFooter() {
   return `
   <footer class="gov-footer">
     <div class="gov-footer-main">
       <div class="gov-footer-col">
-        <h4>केंद्रीय मंत्रालय एवं निकाय / Ministries</h4>
-        <ul>
-          <li><a href="https://morth.nic.in" target="_blank" rel="noopener">सड़क परिवहन और राजमार्ग मंत्रालय (MoRTH)</a></li>
-          <li><a href="https://mdoner.gov.in" target="_blank" rel="noopener">पूर्वोत्तर क्षेत्र विकास मंत्रालय (MDoNER)</a></li>
-          <li><a href="https://necouncil.gov.in" target="_blank" rel="noopener">उत्तर पूर्वी परिषद (North Eastern Council)</a></li>
-          <li><a href="https://nhai.gov.in" target="_blank" rel="noopener">भारतीय राष्ट्रीय राजमार्ग प्राधिकरण (NHAI)</a></li>
-          <li><a href="https://ndma.gov.in" target="_blank" rel="noopener">राष्ट्रीय आपदा प्रबंधन प्राधिकरण (NDMA)</a></li>
-        </ul>
-      </div>
-
-      <div class="gov-footer-col">
-        <h4>नीति एवं विधिक जानकारी / Policies</h4>
-        <ul>
-          <li><a href="javascript:void(0)" onclick="notify('National Logistics Policy (NLP) 2022 Integrated','info')">राष्ट्रीय रसद नीति (National Logistics Policy)</a></li>
-          <li><a href="javascript:void(0)" onclick="notify('Website complies with GIGW 3.0 Standards','info')">वेबसाइट नीतियां (Website Policies - GIGW)</a></li>
-          <li><a href="javascript:void(0)" onclick="notify('Privacy Policy: All driver telemetry encrypted','info')">गोपनीयता नीति (Privacy Policy)</a></li>
-          <li><a href="javascript:void(0)" onclick="notify('Terms of Service: Authorized for commercial freight','info')">नियम एवं शर्तें (Terms and Conditions)</a></li>
-          <li><a href="javascript:void(0)" onclick="go('Help & Safety')">सुलभता विवरण (Accessibility Statement)</a></li>
-        </ul>
-      </div>
-
-      <div class="gov-footer-col">
-        <h4>चालक सहायता एवं नियंत्रण कक्ष / Helplines</h4>
-        <ul>
-          <li><span style="color:#fef08a;font-weight:700">🚨 राष्ट्रीय आपातकालीन नंबर:</span> 112</li>
-          <li><span style="color:#fef08a;font-weight:700">🛣️ NHAI राजमार्ग हेल्पलाइन:</span> 1033 (टोल फ्री)</li>
-          <li><span style="color:#fef08a;font-weight:700">🌊 NDMA आपदा नियंत्रण:</span> 1078</li>
-          <li><span style="color:#fef08a;font-weight:700">🌧️ IMD मौसम चेतावनी सेवा:</span> 1800-180-1717</li>
-          <li><span style="color:#fef08a;font-weight:700">⛽ पूर्वोत्तर ईंधन सहायता:</span> 1800-233-3555</li>
-        </ul>
-      </div>
-
-      <div class="gov-footer-col">
-        <h4>पोर्टल सूचना / Portal Info</h4>
+        <h4>NER SmartLogix Portal</h4>
         <p style="font-size:12px;line-height:1.6;color:#94a3b8">
-          यह पोर्टल पूर्वोत्तर परिषद (NEC) और सड़क परिवहन व राजमार्ग मंत्रालय के तत्वावधान में पूर्वोत्तर के 8 राज्यों में निर्बाध व्यावसायिक परिवहन हेतु विकसित किया गया है।
+          Dedicated logistics intelligence, commercial route risk scoring, and real-time highway hazard monitoring across Assam, Meghalaya, Arunachal Pradesh, Manipur, Mizoram, Nagaland, Sikkim, and Tripura.
         </p>
-        <div style="margin-top:14px;display:flex;align-items:center;gap:8px">
-          <span class="badge warning" style="background:#451a03;border-color:#b45309;color:#fef08a">
-            आगंतुक संख्या / Visitors: 1,842,910
+        <div style="margin-top:12px">
+          <span class="badge" style="background:#001f3f;border-color:#334155;color:#fef08a">
+            Corridors Monitored: 12,500+ KM
           </span>
         </div>
-        <div style="margin-top:8px;font-size:11px;color:#64748b">
-          अंतिम अद्यतन: 09 सितंबर 2026
+      </div>
+
+      <div class="gov-footer-col">
+        <h4>Key Logistics Services</h4>
+        <ul>
+          <li><a href="javascript:void(0)" onclick="go('Plan Trip')">Commercial Route Risk Calculator</a></li>
+          <li><a href="javascript:void(0)" onclick="go('Live Network')">Live Corridor Map & GPS Tracking</a></li>
+          <li><a href="javascript:void(0)" onclick="go('Facilities')">Highway Amenities & Fuel Locator</a></li>
+          <li><a href="javascript:void(0)" onclick="go('Alerts')">Landslide & Weather Hazard Feed</a></li>
+          <li><a href="javascript:void(0)" onclick="go('Feedback')">Submit Road Observation</a></li>
+        </ul>
+      </div>
+
+      <div class="gov-footer-col">
+        <h4>Emergency Helplines (24/7)</h4>
+        <ul>
+          <li><span style="color:#fef08a;font-weight:700">🚨 National Emergency:</span> 112</li>
+          <li><span style="color:#fef08a;font-weight:700">🛣️ NHAI Highway Helpline:</span> 1033 (Toll Free)</li>
+          <li><span style="color:#fef08a;font-weight:700">🌊 Disaster Control:</span> 1078</li>
+          <li><span style="color:#fef08a;font-weight:700">🌧️ IMD Weather Warning:</span> 1800-180-1717</li>
+          <li><span style="color:#fef08a;font-weight:700">⛽ Fuel Emergency Support:</span> 1800-233-3555</li>
+        </ul>
+      </div>
+
+      <div class="gov-footer-col">
+        <h4>States Covered</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#94a3b8">
+          <div>• Assam</div>
+          <div>• Meghalaya</div>
+          <div>• Arunachal Pradesh</div>
+          <div>• Manipur</div>
+          <div>• Nagaland</div>
+          <div>• Mizoram</div>
+          <div>• Sikkim</div>
+          <div>• Tripura</div>
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:#64748b">
+          System Operational · 24/7 Live Monitoring
         </div>
       </div>
     </div>
 
     <div class="gov-footer-bottom">
       <div>
-        सामग्री स्वामित्व: <b>उत्तर पूर्वी परिषद एवं सड़क परिवहन और राजमार्ग मंत्रालय, भारत सरकार</b>
-      </div>
-      <div style="margin-top:6px">
-        Designed, Developed & Hosted by <b>National Informatics Centre (NIC) / Cloud Infrastructure</b>
+        © NER SmartLogix — Intelligent Logistics Platform for Northeast India. All rights reserved.
       </div>
     </div>
   </footer>`;
@@ -373,12 +357,12 @@ export async function render() {
   if (!app) return;
 
   app.innerHTML =
-    topAccessibilityBar() +
-    ministryHeader() +
-    governmentNavbar() +
-    alertTickerMarquee() +
+    topUtilityBar() +
+    portalHeader() +
+    navigationBar() +
+    alertMarqueeTicker() +
     `<main><div id="page-content" class="page-enter">${content}</div></main>` +
-    officialGovernmentFooter() +
+    portalFooter() +
     popupHtml +
     toastEl() +
     renderAuthModal();

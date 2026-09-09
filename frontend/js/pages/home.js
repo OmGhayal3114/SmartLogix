@@ -1,4 +1,4 @@
-﻿// NER SmartLogix — Government of India Official Home Page
+﻿// NER SmartLogix — Clean Portal Style Home Page
 
 import { state } from '../state.js';
 
@@ -6,32 +6,32 @@ export function renderHomePage() {
   const activeAlertsCount = state.top10Alerts.length || 10;
 
   return `
-  <!-- Official Government Hero Banner -->
+  <!-- Portal Hero Banner -->
   <div class="gov-hero-banner reveal">
     <div class="gov-hero-container">
       <div class="gov-eyebrow">
-        <span>🇮🇳</span> राष्ट्रीय लॉजिस्टिक्स नीति (NLP) एवं पीएम गतिशक्ति पहल | Government of India
+        <span>🇮🇳</span> North Eastern Region Logistics & Corridor Intelligence
       </div>
       <h1 class="gov-hero-title">
-        पूर्वोत्तर क्षेत्र में सुरक्षित, निर्बाध एवं सुदृढ़ <br>
-        <span>व्यावसायिक रसद परिवहन प्रणाली (SmartLogix)</span>
+        Intelligent Logistics & Freight Navigation Across <br>
+        <span>Northeast India</span>
       </h1>
       <p class="gov-hero-sub">
-        Official digital intelligence portal for commercial transport across the 8 North Eastern States (Assam, Arunachal Pradesh, Manipur, Meghalaya, Mizoram, Nagaland, Sikkim, Tripura). Integrated with real-time IMD weather warnings, NDMA landslide radar, bridge clearance telemetry, and highway logistics amenities.
+        Dedicated digital intelligence for commercial transport across the 8 North Eastern States (Assam, Arunachal Pradesh, Manipur, Meghalaya, Mizoram, Nagaland, Sikkim, Tripura). Real-time landslide detection, weather-aware route scoring, bridge clearance telemetry, and verified highway amenities.
       </p>
 
       <div class="gov-hero-actions">
         <button class="btn primary" style="padding:11px 22px;font-size:13.5px" onclick="go('Plan Trip')">
-          <span>⇄</span> यात्रा योजना प्रारंभ करें / Plan Route →
+          <span>⇄</span> Plan Journey / Calculate Route →
         </button>
         <button class="btn saffron" style="padding:11px 20px;font-size:13.5px" onclick="openSectionPopup('Alerts')">
-          <span>⚠️</span> सक्रिय अलर्ट / Active Alerts (${activeAlertsCount})
+          <span>⚠️</span> Active Hazard Alerts (${activeAlertsCount})
         </button>
         <button class="btn" style="padding:11px 20px;font-size:13.5px" onclick="go('Live Network')">
-          <span>◎</span> लाइव कॉरिडोर मैप / Live Corridor Map
+          <span>◎</span> Live Corridor Map
         </button>
         <button class="btn" style="padding:11px 18px;font-size:13.5px" onclick="openSectionPopup('Help & Safety')">
-          <span>🚨</span> हेल्पलाइन / Helpline 1033
+          <span>🚨</span> Emergency SOS (1033)
         </button>
       </div>
     </div>
@@ -39,12 +39,12 @@ export function renderHomePage() {
 
   <section class="content">
 
-    <!-- Official Statistics Counter (GIGW Standard) -->
+    <!-- Highway Statistics Banner -->
     <div class="gov-stats-grid reveal">
       <div class="gov-stat-card" style="border-top-color:var(--gov-blue)">
         <div style="font-size:20px;margin-bottom:6px">🛣️</div>
         <div class="gov-stat-num" data-count="12500">12,500+ KM</div>
-        <div class="gov-stat-label">National Highways in NER (MoRTH)</div>
+        <div class="gov-stat-label">National Highways in NER</div>
       </div>
       <div class="gov-stat-card" style="border-top-color:var(--gov-saffron)">
         <div style="font-size:20px;margin-bottom:6px">🗺️</div>
@@ -54,25 +54,132 @@ export function renderHomePage() {
       <div class="gov-stat-card" style="border-top-color:var(--red)">
         <div style="font-size:20px;margin-bottom:6px">⚠️</div>
         <div class="gov-stat-num" data-count="${activeAlertsCount}">${activeAlertsCount}</div>
-        <div class="gov-stat-label">Active Monitored Hazards (NDMA/IMD)</div>
+        <div class="gov-stat-label">Active Monitored Hazards</div>
       </div>
       <div class="gov-stat-card" style="border-top-color:var(--green)">
         <div style="font-size:20px;margin-bottom:6px">⛽</div>
         <div class="gov-stat-num" data-count="350">350+</div>
-        <div class="gov-stat-label">Verified Highway Logistics Amenities</div>
+        <div class="gov-stat-label">Verified Highway Amenities</div>
       </div>
     </div>
 
-    <!-- Official Transporter Services Grid (Citizen / Transporter Services) -->
-    <div style="margin: 32px 0 20px" class="reveal">
+    <!-- Commercial Vehicle Fleet Showcase (Requirement #2) -->
+    <div style="margin: 36px 0 20px" class="reveal">
       <div class="row">
         <div>
-          <div class="gov-eyebrow">ऑनलाइन सेवाएं / Online Services</div>
+          <div class="gov-eyebrow">Real Transport Fleet</div>
           <h2 style="font-size:22px;font-weight:800;color:var(--gov-navy);margin-top:2px">
-            Transporter & Driver Information Services
+            Commercial Logistics Classes in Northeast India
           </h2>
           <p style="color:var(--text-muted);font-size:13px;margin-top:4px">
-            Official logistics modules engineered for mountain commercial freight, driver safety, and emergency compliance.
+            Engineered routing, axle-weight limitations, and mountain suitability tailored for every commercial class.
+          </p>
+        </div>
+      </div>
+
+      <div class="gov-fleet-grid">
+
+        <!-- Fleet 1: Heavy Mountain Truck -->
+        <div class="gov-fleet-card">
+          <div class="gov-fleet-img-wrap">
+            <img src="/assets/vehicles/mountain-truck.jpg" alt="Heavy Multi-Axle Freight Truck in Meghalaya">
+            <span class="gov-fleet-badge">Heavy Freight (16-25T)</span>
+          </div>
+          <div class="gov-fleet-body">
+            <div class="gov-fleet-title">Multi-Axle Mountain Freight Carrier</div>
+            <div class="gov-fleet-desc">
+              Heavy-duty transport for industrial and bulk freight navigating NH27 Guwahati bypass and the steep Meghalaya plateau.
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+              <span class="badge info">NH27 Corridor</span>
+              <span class="badge">Hill Climbing</span>
+              <span class="badge success">Bridge Verified</span>
+            </div>
+            <button class="btn primary" style="width:100%" onclick="planWithVehicle('Heavy Truck')">
+              Plan Route with Heavy Truck →
+            </button>
+          </div>
+        </div>
+
+        <!-- Fleet 2: Refrigerated Container -->
+        <div class="gov-fleet-card">
+          <div class="gov-fleet-img-wrap">
+            <img src="/assets/vehicles/refrigerated-truck.jpg" alt="Cold Chain Transport crossing Brahmaputra Bridge">
+            <span class="gov-fleet-badge">Cold Chain (14T)</span>
+          </div>
+          <div class="gov-fleet-body">
+            <div class="gov-fleet-title">Refrigerated Perishable Express</div>
+            <div class="gov-fleet-desc">
+              Temperature-controlled transport for agricultural produce, fresh dairy, and medical goods traversing Brahmaputra river crossings.
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+              <span class="badge info">River Bridge Safe</span>
+              <span class="badge">Cold Chain</span>
+              <span class="badge success">Priority Transit</span>
+            </div>
+            <button class="btn primary" style="width:100%" onclick="planWithVehicle('Refrigerated Truck')">
+              Plan Route with Reefer →
+            </button>
+          </div>
+        </div>
+
+        <!-- Fleet 3: Fuel Tanker -->
+        <div class="gov-fleet-card">
+          <div class="gov-fleet-img-wrap">
+            <img src="/assets/vehicles/fuel-tanker.jpg" alt="Indian Oil Fuel Tanker in Nagaland">
+            <span class="gov-fleet-badge">Petroleum (12,000L)</span>
+          </div>
+          <div class="gov-fleet-body">
+            <div class="gov-fleet-title">Petroleum Mountain Tanker</div>
+            <div class="gov-fleet-desc">
+              Essential liquid fuel transport serving district retail outlets along NH29 (Dimapur-Kohima) and Manipur hill corridors.
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+              <span class="badge warning">Hazmat Safe</span>
+              <span class="badge">NH29 Corridor</span>
+              <span class="badge">Low Gear Advisory</span>
+            </div>
+            <button class="btn primary" style="width:100%" onclick="planWithVehicle('Tanker')">
+              Plan Route with Tanker →
+            </button>
+          </div>
+        </div>
+
+        <!-- Fleet 4: Rugged Pickup -->
+        <div class="gov-fleet-card">
+          <div class="gov-fleet-img-wrap">
+            <img src="/assets/vehicles/cargo-pickup.jpg" alt="Commercial Hill Pickup in Arunachal Pradesh">
+            <span class="gov-fleet-badge">Commercial 4x4 (2.5T)</span>
+          </div>
+          <div class="gov-fleet-body">
+            <div class="gov-fleet-title">All-Terrain 4x4 Hill Freighter</div>
+            <div class="gov-fleet-desc">
+              Rugged commercial pickup truck for high-altitude passes, border roads, and narrow distribution networks in Arunachal Pradesh and Sikkim.
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+              <span class="badge info">4x4 Agility</span>
+              <span class="badge">Snow & Mud</span>
+              <span class="badge success">Last Mile</span>
+            </div>
+            <button class="btn primary" style="width:100%" onclick="planWithVehicle('Pickup')">
+              Plan Route with Pickup →
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Transporter & Driver Services Grid -->
+    <div style="margin: 36px 0 20px" class="reveal">
+      <div class="row">
+        <div>
+          <div class="gov-eyebrow">Portal Services</div>
+          <h2 style="font-size:22px;font-weight:800;color:var(--gov-navy);margin-top:2px">
+            Transporter & Driver Tools
+          </h2>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:4px">
+            Access any tool instantly as an interactive pop-up or as a full page.
           </p>
         </div>
       </div>
@@ -85,7 +192,7 @@ export function renderHomePage() {
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               <span style="font-size:24px">⇄</span>
               <h3 style="font-size:16px;font-weight:700;color:var(--gov-navy)">
-                मार्ग व्यवहार्यता एवं जोखिम मूल्यांकन / Route Risk & Feasibility
+                Commercial Route Feasibility & Hazard Risk
               </h3>
             </div>
             <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6">
@@ -93,7 +200,7 @@ export function renderHomePage() {
             </p>
           </div>
           <div style="display:flex;gap:10px;margin-top:16px">
-            <button class="btn primary" onclick="go('Plan Trip')">Open Service →</button>
+            <button class="btn primary" onclick="go('Plan Trip')">Open Plan Trip →</button>
             <button class="btn" onclick="openSectionPopup('Plan Trip')">⚡ Quick Pop-up</button>
           </div>
         </div>
@@ -104,15 +211,15 @@ export function renderHomePage() {
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               <span style="font-size:24px">🚨</span>
               <h3 style="font-size:16px;font-weight:700;color:var(--gov-navy)">
-                भूस्खलन व मौसम चेतावनी रडार / Landslide & Weather Bulletin
+                Landslide & Weather Hazard Radar
               </h3>
             </div>
             <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6">
-              Live automated feed synchronized with India Meteorological Department (IMD Mausam) and NDMA for red/orange rainfall warnings, bridge washouts, and rockslides.
+              Live automated feed synchronized with IMD and NDMA for red/orange rainfall warnings, bridge washouts, and rockslide alerts across all 8 NER states.
             </p>
           </div>
           <div style="display:flex;gap:10px;margin-top:16px">
-            <button class="btn primary" onclick="go('Alerts')">View Bulletin →</button>
+            <button class="btn primary" onclick="go('Alerts')">View Alerts Feed →</button>
             <button class="btn" onclick="openSectionPopup('Alerts')">⚡ Quick Pop-up</button>
           </div>
         </div>
@@ -123,11 +230,11 @@ export function renderHomePage() {
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               <span style="font-size:24px">◇</span>
               <h3 style="font-size:16px;font-weight:700;color:var(--gov-navy)">
-                राष्ट्रीय राजमार्ग सुविधाएं / Highway Way-side Amenities
+                National Highway Amenities & Fuel Locator
               </h3>
             </div>
             <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6">
-              Verified directory of 24/7 petrol pumps, heavy vehicle repair stations, government district hospitals, and rest stops along primary NER highway corridors.
+              Verified directory of 24/7 petrol pumps, heavy vehicle repair garages, hospitals, and rest stops along primary NER highway corridors.
             </p>
           </div>
           <div style="display:flex;gap:10px;margin-top:16px">
@@ -142,11 +249,11 @@ export function renderHomePage() {
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               <span style="font-size:24px">✚</span>
               <h3 style="font-size:16px;font-weight:700;color:var(--gov-navy)">
-                राष्ट्रीय राजमार्ग आपातकालीन हेल्पलाइन / NHAI Helpline 1033
+                Emergency Driver SOS & Helplines (1033 / 112)
               </h3>
             </div>
             <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6">
-              Official toll-free emergency dispatch for breakdown assistance, medical transit, and highway patrol support across Assam, Meghalaya, Sikkim, and hill corridors.
+              Instant one-tap emergency numbers for breakdown assistance, medical transit, and highway patrol support across Assam, Meghalaya, Sikkim, and hill roads.
             </p>
           </div>
           <div style="display:flex;gap:10px;margin-top:16px">
@@ -158,127 +265,19 @@ export function renderHomePage() {
       </div>
     </div>
 
-    <!-- Official Fleet Classification Showcase (Real NER Vehicle Photography) -->
-    <div style="margin: 40px 0 20px" class="reveal">
-      <div class="row">
-        <div>
-          <div class="gov-eyebrow">वाहन वर्गीकरण / Vehicle Fleet Classification</div>
-          <h2 style="font-size:22px;font-weight:800;color:var(--gov-navy);margin-top:2px">
-            Authorized Commercial Logistics Classes in Northeast India
-          </h2>
-          <p style="color:var(--text-muted);font-size:13px;margin-top:4px">
-            Operational guidelines, axle-weight limitations, and bridge clearance authorizations per MoRTH specifications.
-          </p>
-        </div>
-      </div>
-
-      <div class="gov-fleet-grid">
-
-        <!-- Fleet 1: Heavy Mountain Truck -->
-        <div class="gov-fleet-card">
-          <div class="gov-fleet-img-wrap">
-            <img src="/assets/vehicles/mountain-truck.jpg" alt="Heavy Multi-Axle Freight Truck in Meghalaya">
-            <span class="gov-fleet-badge">Class: Heavy Freight (16-25T)</span>
-          </div>
-          <div class="gov-fleet-body">
-            <div class="gov-fleet-title">Multi-Axle Mountain Freight Carrier</div>
-            <div class="gov-fleet-desc">
-              Multi-axle commercial freight carrier authorized for NH27 Guwahati bypass, Shillong corridor, and primary industrial zones. Subject to weight compliance at district weighbridges.
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-              <span class="badge info">NH27 Corridor</span>
-              <span class="badge">Axle Safe</span>
-              <span class="badge success">GPS Mandatory</span>
-            </div>
-            <button class="btn primary" style="width:100%" onclick="planWithVehicle('Heavy Truck')">
-              Plan Route with Heavy Truck →
-            </button>
-          </div>
-        </div>
-
-        <!-- Fleet 2: Refrigerated Container -->
-        <div class="gov-fleet-card">
-          <div class="gov-fleet-img-wrap">
-            <img src="/assets/vehicles/refrigerated-truck.jpg" alt="Cold Chain Transport crossing Brahmaputra Bridge">
-            <span class="gov-fleet-badge">Class: Cold Chain (14T)</span>
-          </div>
-          <div class="gov-fleet-body">
-            <div class="gov-fleet-title">Refrigerated Perishable Express</div>
-            <div class="gov-fleet-desc">
-              Temperature-controlled transport for agricultural produce, fresh dairy, and medical vaccines traversing Brahmaputra river crossings and Siliguri transit corridors.
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-              <span class="badge info">River Bridge Safe</span>
-              <span class="badge">Perishables</span>
-              <span class="badge success">Priority Lane</span>
-            </div>
-            <button class="btn primary" style="width:100%" onclick="planWithVehicle('Refrigerated Truck')">
-              Plan Route with Reefer →
-            </button>
-          </div>
-        </div>
-
-        <!-- Fleet 3: Fuel Tanker -->
-        <div class="gov-fleet-card">
-          <div class="gov-fleet-img-wrap">
-            <img src="/assets/vehicles/fuel-tanker.jpg" alt="Indian Oil Fuel Tanker in Nagaland">
-            <span class="gov-fleet-badge">Class: Hazardous Petroleum (12KL)</span>
-          </div>
-          <div class="gov-fleet-body">
-            <div class="gov-fleet-title">Petroleum Mountain Tanker</div>
-            <div class="gov-fleet-desc">
-              Dedicated hazardous fuel transport feeding district retail outlets along NH29 (Dimapur-Kohima) and Manipur hill corridors. Subject to strict safety speed governors.
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-              <span class="badge warning">Hazmat Certified</span>
-              <span class="badge">NH29 Corridor</span>
-              <span class="badge">Hill Low-Gear</span>
-            </div>
-            <button class="btn primary" style="width:100%" onclick="planWithVehicle('Tanker')">
-              Plan Route with Tanker →
-            </button>
-          </div>
-        </div>
-
-        <!-- Fleet 4: Rugged Pickup -->
-        <div class="gov-fleet-card">
-          <div class="gov-fleet-img-wrap">
-            <img src="/assets/vehicles/cargo-pickup.jpg" alt="Commercial Hill Pickup in Arunachal Pradesh">
-            <span class="gov-fleet-badge">Class: Light Commercial 4x4 (2.5T)</span>
-          </div>
-          <div class="gov-fleet-body">
-            <div class="gov-fleet-title">All-Terrain 4x4 Hill Freighter</div>
-            <div class="gov-fleet-desc">
-              Rugged all-weather commercial pickup truck authorized for high-altitude passes, border roads, and narrow village distribution networks in Arunachal Pradesh and Sikkim.
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-              <span class="badge info">4x4 Mountain Pass</span>
-              <span class="badge">Snow & Mud</span>
-              <span class="badge success">Last Mile</span>
-            </div>
-            <button class="btn primary" style="width:100%" onclick="planWithVehicle('Pickup')">
-              Plan Route with Pickup →
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Official Initiative Banner (PM GatiShakti & Digital India) -->
-    <div class="card reveal" style="border-top:3px solid var(--gov-saffron);padding:24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;background:#ffffff">
+    <!-- Call to action card -->
+    <div class="card reveal" style="border-top:3px solid var(--gov-saffron);padding:24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;background:#ffffff;margin-top:32px">
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--gov-saffron);text-transform:uppercase;letter-spacing:1px">भारत सरकार की प्रमुख पहल / Government of India Flagship Initiative</div>
-        <div style="font-size:18px;font-weight:800;color:var(--gov-navy);margin-top:3px">
-          PM GatiShakti — National Master Plan for Multi-Modal Connectivity
+        <div style="font-size:18px;font-weight:800;color:var(--gov-navy)">
+          Ready to plan a commercial journey across Northeast India?
         </div>
-        <p style="font-size:12.5px;color:var(--text-muted);margin-top:4px;max-width:700px">
-          NER SmartLogix operationalizes multi-modal freight planning across roadways, inland waterways, and railway freight terminals across the entire North Eastern Region.
+        <p style="font-size:12.5px;color:var(--text-muted);margin-top:4px;max-width:680px">
+          Select your vehicle type, input origin and destination points, and inspect automated route risk scores before departure.
         </p>
       </div>
       <div style="display:flex;gap:10px">
-        <button class="btn primary" onclick="go('Plan Trip')">Start Journey Planning →</button>
-        <button class="btn" onclick="go('Help & Safety')">Read Safety Guidelines</button>
+        <button class="btn primary" onclick="go('Plan Trip')">Launch Route Planner →</button>
+        <button class="btn" onclick="go('Help & Safety')">Safety Guidelines</button>
       </div>
     </div>
 
