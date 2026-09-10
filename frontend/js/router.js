@@ -28,6 +28,7 @@ export function go(page) {
   }
 }
 
+
 window.go = go;
 
 export function changeLang(lang) {

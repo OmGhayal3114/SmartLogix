@@ -2,7 +2,7 @@
 
 export const state = {
   // Navigation
-  page: 'Plan Trip',
+  page: 'Home',
   menu: false,
 
   // Auth
@@ -13,9 +13,10 @@ export const state = {
   language: 'en',
 
   // Trip planning
-  vehicleType: 'Heavy Truck',
+  vehicleType: '',
   origin: '',
   destination: '',
+
 
   // Route results
   routeReady: false,

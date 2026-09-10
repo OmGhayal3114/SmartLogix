@@ -3,7 +3,8 @@
 import { state } from '../state.js';
 import { api } from '../api.js';
 import { t } from '../i18n.js';
-import { initMap, displayRoute, displayFacilityRoute, startUserLocationTracking, addFacilityMarkers, addAlertMarkers } from '../maps.js';
+import { initMap, displayRoute, startUserLocationTracking, addAlertMarkers } from '../maps.js';
+
 
 function esc(s) {
   return String(s || '').replace(/[&<>"']/g, m =>
@@ -125,21 +126,11 @@ export function renderLivePage() {
 
     </div>
 
-    <!-- Facilities -->
-    <div class="card" style="margin-top:24px">
-      <div class="eyebrow" style="color:var(--teal);margin-bottom:12px">${t('live.nearbyFacilities')}</div>
-      ${state.loadingFacilities
-        ? `<div style="color:var(--muted)">${t('live.loadingFacilities')}</div>`
-        : state.facilities.length === 0
-        ? `<div style="color:var(--muted);font-size:13px">No facility data available for this route.</div>`
-        : `<div class="facilities">${state.facilities.slice(0, 9).map(f => facilityCard(f)).join('')}</div>`
-      }
-    </div>
-
   </section>`;
 }
 
 function alertCard(a) {
+
   const tone = { CRITICAL: 'danger', HIGH: 'warning', MEDIUM: 'warning', LOW: '' };
   return `
   <div class="alert">
@@ -185,7 +176,6 @@ export async function initLiveNetwork() {
   state.loadingMap = true;
   state.loadingRisk = true;
   state.loadingAlerts = true;
-  state.loadingFacilities = true;
   window.render();
 
   // Initialize the OpenStreetMap/Leaflet renderer
@@ -198,7 +188,6 @@ export async function initLiveNetwork() {
       if (map) {
         displayRoute(state.selectedRoute);
         startUserLocationTracking();
-        if (state.selectedFacility) displayFacilityRoute(state.selectedFacility);
       }
     }, 150);
   } catch (err) {
@@ -207,11 +196,10 @@ export async function initLiveNetwork() {
     window.render();
   }
 
-  // Parallel data fetches
-  const [riskRes, alertsRes, facilitiesRes] = await Promise.allSettled([
+  // Parallel data fetches (no facilities here — they are on the Facilities page)
+  const [riskRes, alertsRes] = await Promise.allSettled([
     api.getRouteRisk({ origin: state.origin, destination: state.destination, vehicleType: state.vehicleType }),
-    api.getRouteAlerts(state.origin, state.destination),
-    api.getFacilitiesNearRoute(state.origin, state.destination)
+    api.getRouteAlerts(state.origin, state.destination)
   ]);
 
   if (riskRes.status === 'fulfilled' && !state.selectedRoute.risk) {
@@ -225,26 +213,18 @@ export async function initLiveNetwork() {
   }
   state.loadingAlerts = false;
 
-  if (facilitiesRes.status === 'fulfilled') {
-    state.facilities = facilitiesRes.value.facilities || [];
-    setTimeout(() => addFacilityMarkers(state.facilities), 600);
-  }
-  state.loadingFacilities = false;
-
   window.render();
-  // Rendering the updated cards replaces the map DOM node. Recreate Leaflet
-  // after that render so the map remains visible after data loads.
+  // Recreate Leaflet after render so map remains visible after data loads.
   setTimeout(async () => {
     const liveMap = await initMap('osm-map');
     if (liveMap) {
       displayRoute(state.selectedRoute);
       startUserLocationTracking();
-      if (state.selectedFacility) displayFacilityRoute(state.selectedFacility);
       addAlertMarkers(state.routeAlerts);
-      addFacilityMarkers(state.facilities);
     }
   }, 50);
 }
+
 
 window.saveTripToServer = async () => {
   const { notify } = await import('../render.js');

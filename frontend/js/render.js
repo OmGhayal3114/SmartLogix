@@ -4,12 +4,13 @@ import { state } from './state.js';
 import { t } from './i18n.js';
 import { renderAuthModal } from './auth.js';
 
-const PAGES = ['Plan Trip', 'Live Network', 'My Trip', 'Facilities', 'Alerts', 'Help & Safety', 'Feedback'];
+const PAGES = ['Home', 'Plan Trip', 'Live Network', 'My Trip', 'Facilities', 'Alerts', 'Help & Safety', 'Feedback'];
 const PAGE_ICONS = {
-  'Plan Trip': '⇄', 'Live Network': '◎', 'My Trip': '▣',
+  'Home': '⌂', 'Plan Trip': '⇄', 'Live Network': '◎', 'My Trip': '▣',
   'Facilities': '◇', 'Alerts': '!', 'Help & Safety': '✚', 'Feedback': '↗'
 };
 const PAGE_I18N_KEYS = {
+  'Home': 'nav.home',
   'Plan Trip': 'nav.planTrip',
   'Live Network': 'nav.liveNetwork',
   'My Trip': 'nav.myTrip',
@@ -78,7 +79,7 @@ function sidebar() {
 function mobileHeader() {
   return `
   <header class="mobile-header">
-    <button class="mobile-menu" onclick="go('Plan Trip')">
+    <button class="mobile-menu" onclick="go('Home')">
       ◉ <span class="logo">NER <b>SmartLogix</b></span>
     </button>
     <div style="display:flex;gap:8px">
@@ -89,6 +90,7 @@ function mobileHeader() {
     </div>
   </header>`;
 }
+
 
 function topbar() {
   return `
@@ -127,6 +129,10 @@ function esc(s) {
 
 async function pageContent() {
   switch (state.page) {
+    case 'Home': {
+      const { renderHomePage } = await import('./pages/home.js');
+      return renderHomePage();
+    }
     case 'Plan Trip': {
       const { renderPlanPage } = await import('./pages/plan.js');
       return renderPlanPage();
@@ -156,11 +162,12 @@ async function pageContent() {
       return renderFeedbackPage();
     }
     default: {
-      const { renderPlanPage } = await import('./pages/plan.js');
-      return renderPlanPage();
+      const { renderHomePage } = await import('./pages/home.js');
+      return renderHomePage();
     }
   }
 }
+
 
 export async function render() {
   const content = await pageContent();

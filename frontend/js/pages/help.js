@@ -1,4 +1,4 @@
-// NER SmartLogix — Help & Safety page
+﻿// NER SmartLogix — Help & Safety page
 
 import { t } from '../i18n.js';
 
@@ -6,6 +6,18 @@ function esc(s) {
   return String(s || '').replace(/[&<>"']/g, m =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
 }
+
+// Verified Indian emergency numbers
+const EMERGENCY_CONTACTS = [
+  { icon: '🚨', label: 'National Emergency', number: '112', color: 'var(--red)' },
+  { icon: '🏥', label: 'Ambulance', number: '108', color: 'var(--red)' },
+  { icon: '🚒', label: 'Fire Brigade', number: '101', color: 'var(--orange)' },
+  { icon: '👮', label: 'Police', number: '100', color: '#60a5fa' },
+  { icon: '🛣️', label: 'NHAI Helpline', number: '1033', color: 'var(--teal)' },
+  { icon: '🌊', label: 'NDMA Disaster', number: '1078', color: 'var(--orange)' },
+  { icon: '🌧️', label: 'IMD Weather', number: '1800-180-1717', color: '#a78bfa' },
+  { icon: '⛽', label: 'NE Fuel Emergency', number: '1800-233-3555', color: 'var(--teal)' }
+];
 
 export function renderHelpPage() {
   const checks = [
@@ -24,14 +36,27 @@ export function renderHelpPage() {
     </div>
 
     <div class="help-grid">
-      ${helpCard('✚', t('help.emergency'), t('help.emergencyDesc'),
-        "notify('Emergency: Call 112 (National), 1033 (NHAI Helpline)', 'success')")}
-      ${helpCard('◇', t('help.find'), t('help.findDesc'), "go('Facilities')")}
-      ${helpCard('☎', t('help.contacts'), t('help.contactsDesc'), 'showEmergencyContacts()')}
-      ${helpCard('↗', t('help.shareTrip'), t('help.shareTripDesc'),
-        "notify('Share your live location via WhatsApp or phone call to a trusted contact.', 'success')")}
+      ${helpCard('✚', t('help.emergency'), t('help.emergencyDesc'), 'tel:112')}
+      ${helpCard('◇', t('help.find'), t('help.findDesc'), null, "go('Facilities')")}
+      ${helpCard('☎', t('help.contacts'), t('help.contactsDesc'), null, "document.getElementById('emergency-contacts-section').scrollIntoView({behavior:'smooth'})")}
+      ${helpCard('↗', t('help.shareTrip'), t('help.shareTripDesc'), null, "shareTrip()")}
     </div>
 
+    <!-- Emergency Contacts — Direct Call Buttons -->
+    <div class="card" style="margin-top:20px" id="emergency-contacts-section">
+      <h3 style="margin-bottom:20px">📞 ${t('help.emergencyContactsTitle') || 'Emergency Contacts — NER Region'}</h3>
+      <div class="help-call-grid">
+        ${EMERGENCY_CONTACTS.map(c => `
+        <a href="tel:${esc(c.number)}" class="help-call-card" style="border-color:${c.color}33">
+          <div style="font-size:24px;margin-bottom:8px">${c.icon}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${esc(c.label)}</div>
+          <div style="font-size:20px;font-weight:700;color:${c.color};letter-spacing:1px">${esc(c.number)}</div>
+          <div style="margin-top:10px" class="badge info">📞 Tap to Call</div>
+        </a>`).join('')}
+      </div>
+    </div>
+
+    <!-- Safety Checklist -->
     <div class="card" style="margin-top:20px">
       <h3 style="margin-bottom:16px">${t('help.checklist')}</h3>
       <div>
@@ -43,28 +68,9 @@ export function renderHelpPage() {
       </div>
     </div>
 
+    <!-- Logistics Safety Tips -->
     <div class="card" style="margin-top:20px">
-      <h3 style="margin-bottom:16px">Emergency Contacts — NER Region</h3>
-      <div class="detail-grid">
-        ${[
-          ['🚨 National Emergency', '112'],
-          ['🏥 Ambulance', '108'],
-          ['🚒 Fire', '101'],
-          ['👮 Police', '100'],
-          ['🛣️ NHAI Helpline', '1033'],
-          ['🌊 NDMA Helpline', '1078'],
-          ['🌧️ IMD Weather', '1800-180-1717'],
-          ['⛽ NE Fuel Emergency', '1800-233-3555']
-        ].map(([label, num]) => `
-        <div>
-          <small>${label}</small>
-          <strong style="display:block;margin-top:5px;color:var(--teal);font-size:18px">${num}</strong>
-        </div>`).join('')}
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:20px">
-      <h3 style="margin-bottom:16px">Logistics Safety Tips — NER Terrain</h3>
+      <h3 style="margin-bottom:16px">🏔️ Logistics Safety Tips — NER Terrain</h3>
       <div>
         ${[
           '⛰️ On hill roads (Manipur, Arunachal, Sikkim): Reduce speed to 20-30 km/h and use low gear when descending.',
@@ -77,7 +83,7 @@ export function renderHelpPage() {
           '🌫️ Visibility: Fog is common in Sikkim and Meghalaya October-February. Use fog lights and maintain safe distances.'
         ].map(tip => `
         <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff08;font-size:13px;line-height:1.6">
-          <span>${tip}</span>
+          <span>${esc(tip)}</span>
         </div>`).join('')}
       </div>
     </div>
@@ -85,7 +91,16 @@ export function renderHelpPage() {
   </section>`;
 }
 
-function helpCard(icon, title, text, action) {
+function helpCard(icon, title, text, telLink, action) {
+  if (telLink) {
+    return `
+  <a href="${telLink}" class="help" style="display:block;text-decoration:none">
+    <div style="color:var(--teal);font-size:28px;margin-bottom:10px">${icon}</div>
+    <h3>${esc(title)}</h3>
+    <p style="margin-top:8px;font-size:13px;color:var(--muted)">${esc(text)}</p>
+    <div class="badge danger" style="margin-top:12px">📞 Call 112</div>
+  </a>`;
+  }
   return `
   <button class="help" onclick="${action}">
     <div style="color:var(--teal);font-size:28px;margin-bottom:10px">${icon}</div>
@@ -94,8 +109,16 @@ function helpCard(icon, title, text, action) {
   </button>`;
 }
 
-window.showEmergencyContacts = () => {
-  import('../render.js').then(m =>
-    m.notify('Emergency: 112 | Ambulance: 108 | NHAI: 1033 | NDMA: 1078', 'success')
-  );
+window.shareTrip = () => {
+  if (navigator.share && window.state && window.state.selectedRoute) {
+    navigator.share({
+      title: 'NER SmartLogix — Live Trip',
+      text: `I am travelling from ${window.state.origin} to ${window.state.destination} via ${window.state.selectedRoute.summary}. Track my journey on NER SmartLogix.`,
+      url: window.location.href
+    }).catch(() => {});
+  } else {
+    import('../render.js').then(m =>
+      m.notify('Share your live location via WhatsApp or phone call to a trusted contact.', 'success')
+    );
+  }
 };

@@ -1,4 +1,4 @@
-// NER SmartLogix — Facilities page
+﻿// NER SmartLogix — Facilities page
 
 import { state } from '../state.js';
 import { api } from '../api.js';
@@ -9,9 +9,37 @@ function esc(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
 }
 
+const TYPE_LABEL = {
+  hospital: 'Hospital',
+  lodging: 'Hotel / Lodge',
+  gas_station: 'Petrol Pump',
+  restaurant: 'Restaurant / Dhaba',
+  pharmacy: 'Pharmacy',
+  police: 'Police Station',
+  parking: 'Parking',
+  car_repair: 'Vehicle Repair',
+  fire_station: 'Fire Station',
+  atm: 'ATM',
+  bank: 'Bank'
+};
+
+const TYPE_COLOR = {
+  hospital: 'var(--red)',
+  lodging: 'var(--orange)',
+  gas_station: 'var(--teal)',
+  restaurant: '#a78bfa',
+  pharmacy: '#34d399',
+  police: '#60a5fa',
+  parking: '#94a3b8',
+  car_repair: '#fbbf24',
+  fire_station: '#f87171',
+  atm: '#6ee7b7',
+  bank: '#6ee7b7'
+};
+
 export async function loadFacilitiesPage() {
   if (!state.origin || !state.destination || !state.selectedRoute) return;
-  if (state.facilities.length > 0) return; // Already loaded from Live Network
+  if (state.facilities.length > 0) return; // Already loaded
   state.loadingFacilities = true;
   window.render();
   try {
@@ -26,12 +54,6 @@ export async function loadFacilitiesPage() {
 }
 
 export function renderFacilitiesPage() {
-  const typeLabel = {
-    hospital: t('facilities.hospital'),
-    lodging: t('facilities.hotel'),
-    gas_station: t('facilities.petrolPump')
-  };
-  const typeColor = { hospital: 'var(--red)', lodging: 'var(--orange)', gas_station: 'var(--teal)' };
   const noRoute = !state.origin || !state.destination || !state.selectedRoute;
 
   return `
@@ -59,30 +81,43 @@ export function renderFacilitiesPage() {
       : `
         <div style="margin-bottom:16px;color:var(--muted);font-size:13px">
           Facilities along route: <b style="color:var(--text)">${esc(state.origin)} → ${esc(state.destination)}</b>
+          <span class="badge" style="margin-left:10px">${state.facilities.length} found</span>
         </div>
 
         <div class="facilities">
-          ${state.facilities.map(f => `
-          <div class="facility" style="cursor:pointer" onclick="selectFacility(${state.facilities.indexOf(f)})" title="Show directions on map">
-            <div class="row">
-              <div>
-                <b>${esc(f.name)}</b>
-                <div class="muted" style="margin-top:4px;font-size:11px">${esc(f.address || '')}</div>
-              </div>
-              <span class="badge" style="color:${typeColor[f.facilityType] || 'var(--teal)'}">
-                ${typeLabel[f.facilityType] || f.facilityType}
-              </span>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
-              ${f.rating ? `<span class="muted">⭐ ${f.rating}</span>` : ''}
-              ${f.openNow != null
-                ? `<span class="badge ${f.openNow ? 'success' : 'warning'}">${f.openNow ? t('facilities.open') : t('facilities.closed')}</span>`
-                : ''}
-            </div>
-          </div>`).join('')}
+          ${state.facilities.map((f, idx) => facilityCard(f, idx)).join('')}
         </div>`
     }
   </section>`;
+}
+
+function facilityCard(f, idx) {
+  const label = TYPE_LABEL[f.facilityType] || f.facilityType || 'Facility';
+  const color = TYPE_COLOR[f.facilityType] || 'var(--teal)';
+  const distText = f.distanceMeters
+    ? (f.distanceMeters >= 1000
+        ? `${(f.distanceMeters / 1000).toFixed(1)} km`
+        : `${Math.round(f.distanceMeters)} m`)
+    : '';
+
+  return `
+  <div class="facility" style="cursor:pointer" onclick="selectFacility(${idx})" title="View on map">
+    <div class="row">
+      <div style="flex:1;min-width:0">
+        <b style="font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</b>
+        <div class="muted" style="margin-top:3px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.address || '')}</div>
+      </div>
+      <span class="badge" style="color:${color};flex-shrink:0;margin-left:8px">${esc(label)}</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;align-items:center;flex-wrap:wrap">
+      ${f.rating ? `<span class="muted" style="font-size:12px">⭐ ${f.rating}</span>` : ''}
+      ${distText ? `<span class="muted" style="font-size:11px">📍 ${distText}</span>` : ''}
+      ${f.openNow != null
+        ? `<span class="badge ${f.openNow ? 'success' : 'warning'}">${f.openNow ? t('facilities.open') : t('facilities.closed')}</span>`
+        : ''}
+      <span class="badge info" style="margin-left:auto;cursor:pointer" onclick="event.stopPropagation();selectFacility(${idx})">Navigate →</span>
+    </div>
+  </div>`;
 }
 
 window.selectFacility = async (index) => {
