@@ -64,7 +64,8 @@ export async function loadFacilitiesPage() {
     await searchFacilitiesAlongRoute(state.selectedRoute);
 
     if (!state.facilities || state.facilities.length === 0) {
-      const data = await api.getFacilitiesNearRoute(state.origin, state.destination);
+      const routeCoords = state.selectedRoute?.geometry?.coordinates || [];
+      const data = await api.getFacilitiesNearRoute(state.origin, state.destination, routeCoords);
       if (data && data.facilities && data.facilities.length > 0) {
         state.facilities = data.facilities;
         state._loadedRouteForFacilities = state.selectedRoute;

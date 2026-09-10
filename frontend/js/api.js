@@ -38,9 +38,10 @@ export const api = {
   getRouteAlerts: (origin, dest) =>
     request('GET', `/alerts/route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}`),
 
-  // Facilities
-  getFacilitiesNearRoute: (origin, dest) =>
-    request('GET', `/facilities/near-route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}`),
+  // Facilities — POST to send actual route geometry for corridor-based search
+  getFacilitiesNearRoute: (origin, dest, routeCoords = []) =>
+    request('POST', '/facilities/near-route', { origin, destination: dest, routeCoords }),
+
 
   // ML
   getRouteRisk: (body) => request('POST', '/ml/route-risk', body),

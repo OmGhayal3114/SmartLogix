@@ -300,12 +300,24 @@ export function displayRoute(route) {
     `);
   }
 
+  // Immediately populate HUD with OSRM-provided distance & duration
+  // These values come directly from the routing engine — never from fixed speed
+  if (route.distance && route.duration) {
+    state.remainingDistance = route.distance;
+    state.remainingDuration = route.duration;
+    const distEl = document.getElementById('remaining-distance');
+    if (distEl) distEl.textContent = route.distance;
+    const etaEl = document.getElementById('remaining-eta');
+    if (etaEl) etaEl.textContent = route.duration;
+  }
+
   // Automatically search and display accessibility facilities along this route
   searchFacilitiesAlongRoute(route);
 }
 
 /**
  * Searches accessibility facilities along the route corridor using Overpass / OSM.
+ * Passes actual OSRM route geometry to backend for accurate road-based sampling.
  */
 export async function searchFacilitiesAlongRoute(route) {
   if (!route) return;
@@ -320,8 +332,11 @@ export async function searchFacilitiesAlongRoute(route) {
     return;
   }
 
+  // Extract real road geometry from OSRM route — GeoJSON [lng,lat][] array
+  const routeCoords = route?.geometry?.coordinates || [];
+
   try {
-    const data = await api.getFacilitiesNearRoute(originName, destName);
+    const data = await api.getFacilitiesNearRoute(originName, destName, routeCoords);
     if (data && Array.isArray(data.facilities) && data.facilities.length > 0) {
       state.facilities = data.facilities;
       state._loadedRouteForFacilities = route;

@@ -294,8 +294,12 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
 
 /**
  * Searches facilities along the route corridor using Overpass API.
+ * @param {string} origin - Origin place name
+ * @param {string} destination - Destination place name
+ * @param {string[]} types - Facility type filters
+ * @param {Array} routeCoords - GeoJSON [lng,lat] coordinate array from OSRM geometry
  */
-async function getFacilitiesAlongRoute(origin, destination, types = ['hospital', 'lodging', 'gas_station', 'car_repair', 'parking', 'restaurant']) {
+async function getFacilitiesAlongRoute(origin, destination, types = ['hospital', 'lodging', 'gas_station', 'car_repair', 'parking', 'restaurant'], routeCoords = []) {
   const cacheKey = `${origin}->${destination}->${types.sort().join(',')}`;
   if (cache.facilities.has(cacheKey)) {
     return cache.facilities.get(cacheKey);
@@ -303,12 +307,27 @@ async function getFacilitiesAlongRoute(origin, destination, types = ['hospital',
 
   const [originPoint, destinationPoint] = await Promise.all([geocode(origin), geocode(destination)]);
 
-  // Sample corridor centers: origin, midpoint, destination
-  const centers = [
-    [originPoint.lat, originPoint.lng],
-    [(originPoint.lat + destinationPoint.lat) / 2, (originPoint.lng + destinationPoint.lng) / 2],
-    [destinationPoint.lat, destinationPoint.lng]
-  ];
+  // Build corridor sample points from actual route geometry if provided,
+  // otherwise fall back to straight-line interpolation.
+  let centers;
+  if (routeCoords && routeCoords.length >= 2) {
+    // Sample up to 8 evenly-spaced points along the real road geometry
+    const step = Math.max(1, Math.floor(routeCoords.length / 7));
+    const sampled = [];
+    for (let i = 0; i < routeCoords.length; i += step) {
+      sampled.push([routeCoords[i][1], routeCoords[i][0]]); // convert [lng,lat] → [lat,lng]
+    }
+    // Always include the last point
+    const last = routeCoords[routeCoords.length - 1];
+    sampled.push([last[1], last[0]]);
+    centers = sampled;
+  } else {
+    // Fallback: 5 straight-line interpolation points
+    centers = [0, 0.25, 0.5, 0.75, 1].map(t => [
+      originPoint.lat + (destinationPoint.lat - originPoint.lat) * t,
+      originPoint.lng + (destinationPoint.lng - originPoint.lng) * t
+    ]);
+  }
 
   const wanted = new Set(types);
   const clauses = [];
