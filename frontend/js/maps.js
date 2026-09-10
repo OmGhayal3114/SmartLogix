@@ -332,8 +332,12 @@ export async function searchFacilitiesAlongRoute(route) {
     return;
   }
 
-  // Extract real road geometry from OSRM route — GeoJSON [lng,lat][] array
-  const routeCoords = route?.geometry?.coordinates || [];
+  // Extract and thin real road geometry — max 20 sampled points keeps payload small
+  // while giving the backend sufficient corridor coverage across the full route.
+  const rawCoords = route?.geometry?.coordinates || [];
+  const routeCoords = rawCoords.length <= 20
+    ? rawCoords
+    : Array.from({ length: 20 }, (_, i) => rawCoords[Math.round(i * (rawCoords.length - 1) / 19)]);
 
   try {
     const data = await api.getFacilitiesNearRoute(originName, destName, routeCoords);
@@ -713,7 +717,10 @@ function setLocationStatus(text) {
  */
 function updateRemainingRouteProgress(userLat, userLng) {
   if (!state.selectedRoute?.geometry?.coordinates) return;
-  const coords = state.selectedRoute.geometry.coordinates;
+  const rawCoords = state.selectedRoute?.geometry?.coordinates || [];
+  const coords = rawCoords.length <= 20
+    ? rawCoords
+    : Array.from({ length: 20 }, (_, i) => rawCoords[Math.round(i * (rawCoords.length - 1) / 19)]);
   if (coords.length < 2) return;
 
   // Find nearest point on route
