@@ -141,6 +141,7 @@ function renderSafetyAlternateBanner() {
 
 function routeCard(r, i) {
   const cachedRisk = (window._routeRiskCache && window._routeRiskCache[i]) || (r.risk?.overall ? {
+    success: true,
     overall: r.risk.overall,
     factors: r.risk.factors,
     segments: r.risk.segments,
@@ -299,6 +300,14 @@ async function fetchRiskAnalysisForAllRoutes() {
 
 window.calculateRoutes = async () => {
   const { notify } = await import('../render.js');
+
+  const originEl = document.getElementById('origin-input');
+  const destEl = document.getElementById('dest-input');
+  const vehicleEl = document.getElementById('vehicle-select');
+  if (originEl && originEl.value) state.origin = originEl.value;
+  if (destEl && destEl.value) state.destination = destEl.value;
+  if (vehicleEl && vehicleEl.value) state.vehicleType = vehicleEl.value;
+
   if (!state.vehicleType) {
     notify(t('plan.selectVehicleFirst'), 'error');
     return;

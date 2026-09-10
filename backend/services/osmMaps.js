@@ -373,8 +373,9 @@ async function findAlternateSafetyRoute({
   const routeRiskML = require('./routeRiskML');
   const validCandidates = [];
 
-  // Query OSRM for candidate routes (test up to 5 candidates)
-  const candidatesToTest = candidateWaypoints.slice(0, 5);
+  // Query OSRM for candidate detour routes (fast parallel road-snapped check)
+  const candidatesToTest = candidateWaypoints.slice(0, 2);
+  const candidateRoutes = [];
 
   await Promise.allSettled(
     candidatesToTest.map(async (wp) => {
@@ -382,7 +383,7 @@ async function findAlternateSafetyRoute({
         const coords = `${originPoint.lng},${originPoint.lat};${wp.lng},${wp.lat};${destinationPoint.lng},${destinationPoint.lat}`;
         const resp = await http.get(`${OSRM_URL}/${coords}`, {
           params: { overview: 'full', geometries: 'geojson', steps: 'true' },
-          timeout: 8000
+          timeout: 4000
         });
 
         if (resp.data?.code !== 'Ok' || !resp.data.routes?.length) return;
@@ -393,55 +394,10 @@ async function findAlternateSafetyRoute({
         if (Math.abs(candDist - primaryDist) < 5000) return; // Must differ by at least 5 km
         if (candDist > primaryDist * 3.5) return; // Must not exceed 3.5x primary distance
 
-        const altRouteObj = {
-          index: 1,
-          summary: `Alternate Safety Bypass (${wp.name})`,
-          distance: `${(osrmRoute.distance / 1000).toFixed(1)} km`,
-          distanceValue: Math.round(osrmRoute.distance),
-          duration: formatDuration(osrmRoute.duration),
-          durationValue: Math.round(osrmRoute.duration),
-          durationInTraffic: null,
-          startAddress: originPoint.label || origin,
-          endAddress: destinationPoint.label || destination,
-          origin: originPoint,
-          destination: destinationPoint,
-          geometry: osrmRoute.geometry,
-          steps: (osrmRoute.legs?.[0]?.steps || []).map(formatStep).slice(0, 30),
-          vehicleType,
-          isAlternateSafetyRoute: true,
-          warnings: ['Alternate corridor evaluated to avoid high-hazard primary corridor.']
-        };
-
-        // Score this candidate with ML risk engine
-        const riskResult = await routeRiskML.analyzeRouteRisk({
-          route: altRouteObj,
-          origin,
-          destination,
-          vehicleType
-        });
-
-        if (!riskResult || !riskResult.success) return;
-
-        const riskObj = {
-          risk: riskResult.overall.level,
-          score: riskResult.overall.score,
-          overall: riskResult.overall,
-          factors: riskResult.factors,
-          segments: riskResult.segments,
-          recommendation: riskResult.overall.recommendation,
-          confidence: Number((riskResult.overall.confidencePct / 100).toFixed(2)),
-          confidencePct: riskResult.overall.confidencePct,
-          keyFactors: riskResult.overall.keyFactors,
-          scoringVersion: 'ml-route-risk-v2'
-        };
-
-        validCandidates.push({
-          route: {
-            ...altRouteObj,
-            risk: riskObj,
-            isRecommendedForSafety: riskResult.overall.score < primaryRiskScore
-          },
-          score: riskResult.overall.score
+        candidateRoutes.push({
+          wp,
+          osrmRoute,
+          distanceRatio: candDist / primaryDist
         });
       } catch (e) {
         // Candidate query failed; ignore
@@ -449,13 +405,65 @@ async function findAlternateSafetyRoute({
     })
   );
 
-  if (!validCandidates.length) return null;
+  if (!candidateRoutes.length) return null;
 
-  // Pick the candidate with the lowest risk score
-  validCandidates.sort((a, b) => a.score - b.score);
-  const best = validCandidates[0];
+  // Pick the best candidate detour
+  const chosen = candidateRoutes[0];
+  const { wp, osrmRoute } = chosen;
 
-  return best.route;
+  const altRouteObj = {
+    index: 1,
+    summary: `Alternate Safety Bypass (${wp.name})`,
+    distance: `${(osrmRoute.distance / 1000).toFixed(1)} km`,
+    distanceValue: Math.round(osrmRoute.distance),
+    duration: formatDuration(osrmRoute.duration),
+    durationValue: Math.round(osrmRoute.duration),
+    durationInTraffic: null,
+    startAddress: originPoint.label || origin,
+    endAddress: destinationPoint.label || destination,
+    origin: originPoint,
+    destination: destinationPoint,
+    geometry: osrmRoute.geometry,
+    steps: (osrmRoute.legs?.[0]?.steps || []).map(formatStep).slice(0, 30),
+    vehicleType,
+    isAlternateSafetyRoute: true,
+    warnings: ['Alternate corridor evaluated to avoid high-hazard primary corridor.']
+  };
+
+  try {
+    // Score chosen candidate with ML risk engine
+    const riskResult = await routeRiskML.analyzeRouteRisk({
+      route: altRouteObj,
+      origin,
+      destination,
+      vehicleType
+    });
+
+    if (riskResult && riskResult.success) {
+      const riskObj = {
+        risk: riskResult.overall.level,
+        score: riskResult.overall.score,
+        overall: riskResult.overall,
+        factors: riskResult.factors,
+        segments: riskResult.segments,
+        recommendation: riskResult.overall.recommendation,
+        confidence: Number((riskResult.overall.confidencePct / 100).toFixed(2)),
+        confidencePct: riskResult.overall.confidencePct,
+        keyFactors: riskResult.overall.keyFactors,
+        scoringVersion: 'ml-route-risk-v2'
+      };
+
+      return {
+        ...altRouteObj,
+        risk: riskObj,
+        isRecommendedForSafety: riskResult.overall.score < primaryRiskScore
+      };
+    }
+  } catch (scoreErr) {
+    console.warn('[OSM Alternate] Risk scoring fallback:', scoreErr.message);
+  }
+
+  return altRouteObj;
 }
 
 function elementPoint(element) {

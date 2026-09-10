@@ -8,7 +8,7 @@ const weatherCache = new Map();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function roundCoord(val) {
-  return Number(Number(val).toFixed(2));
+  return Number(Number(val).toFixed(1));
 }
 
 function getCacheKey(lat, lng) {
@@ -30,7 +30,7 @@ async function fetchPointWeather(lat, lng) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${roundedLat}&longitude=${roundedLng}&current=temperature_2m,relative_humidity_2m,precipitation,rain,wind_speed_10m&daily=precipitation_sum,precipitation_probability_max&timezone=auto&forecast_days=2`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
 
   try {
     const res = await fetch(url, { signal: controller.signal });

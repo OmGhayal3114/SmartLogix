@@ -64,7 +64,7 @@ exports.calculateRoutes = async (req, res, next) => {
 
         if (!hasSafeExistingRoute) {
           try {
-            const altRoute = await mapsService.findAlternateSafetyRoute({
+            const altPromise = mapsService.findAlternateSafetyRoute({
               origin,
               destination,
               originPoint: primaryRoute.origin,
@@ -73,13 +73,18 @@ exports.calculateRoutes = async (req, res, next) => {
               primaryRoute,
               primaryRiskScore
             });
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Alternate route search timeout (6s)')), 6000)
+            );
+
+            const altRoute = await Promise.race([altPromise, timeoutPromise]);
 
             if (altRoute) {
               altRoute.index = enrichedRoutes.length;
               enrichedRoutes.push(altRoute);
             }
           } catch (altErr) {
-            console.warn('[Route Risk] Alternate safety route search failed:', altErr.message);
+            console.warn('[Route Risk] Alternate safety route search failed or timed out:', altErr.message);
           }
         }
       }
