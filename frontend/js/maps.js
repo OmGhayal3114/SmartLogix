@@ -88,6 +88,8 @@ function createFacilityIcon(color, symbol) {
 
 /**
  * Initializes interactive OpenStreetMap inside container using Leaflet.
+ * Detects if Leaflet is already mounted on the same DOM element and reuses
+ * it — prevents the map from going blank when window.render() is called.
  */
 export async function initMap(containerId = 'osm-map') {
   let element = document.getElementById(containerId);
@@ -98,12 +100,27 @@ export async function initMap(containerId = 'osm-map') {
 
   await ensureLeafletLoaded();
 
-  // Clean up previous map instance if re-initializing
+  // If Leaflet is already mounted on this exact DOM element, reuse it.
+  // This prevents the map from going blank after window.render() re-creates the div.
+  if (map && element._leaflet_id) {
+    try {
+      map.invalidateSize(true);
+      // Restore layers if they were lost
+      if (mainRouteLayer && !map.hasLayer(mainRouteLayer)) mainRouteLayer.addTo(map);
+      if (facilityMarkersGroup && !map.hasLayer(facilityMarkersGroup)) facilityMarkersGroup.addTo(map);
+      if (alertMarkersGroup && !map.hasLayer(alertMarkersGroup)) alertMarkersGroup.addTo(map);
+    } catch (_) {}
+    return map;
+  }
+
+  // DOM was re-rendered — clean up stale instance and create fresh map
   if (map) {
     try { map.remove(); } catch (_) {}
     map = null;
   }
+  // Clear any leftover Leaflet markup from a stale instance
   element.innerHTML = '';
+  delete element._leaflet_id;
 
   // Default center: Guwahati, Assam (Logistics gateway of North Eastern Region)
   const defaultCenter = [26.14, 91.74];
@@ -113,6 +130,7 @@ export async function initMap(containerId = 'osm-map') {
     zoom: 7,
     zoomControl: false // custom position
   });
+
 
   // Official OpenStreetMap tiles (natural green landscape, zero API key required)
   const osmTiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {

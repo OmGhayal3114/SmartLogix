@@ -128,33 +128,7 @@ export function renderLivePage() {
 export async function initLiveNetwork() {
   if (!state.selectedRoute) return;
 
-  state.loadingMap = true;
-  state.loadingRisk = true;
-  window.render();
-
-  try {
-    state.loadingMap = false;
-    window.render();
-
-    setTimeout(async () => {
-      const oMap = await initMap('osm-map');
-      if (oMap) {
-        oMap.invalidateSize();
-        displayRoute(state.selectedRoute);
-        startUserLocationTracking();
-        if (state.selectedFacility) {
-          const { displayFacilityRoute } = await import('../maps.js');
-          displayFacilityRoute(state.selectedFacility);
-        }
-      }
-    }, 200);
-  } catch (err) {
-    state.loadingMap = false;
-    console.error('[OpenStreetMap]', err.message);
-    window.render();
-  }
-
-  // Fetch ML risk in background
+  // Fetch ML risk BEFORE any render so we don't re-render after the map is alive
   try {
     const riskData = await api.getRouteRisk({
       origin: state.origin,
@@ -165,14 +139,17 @@ export async function initLiveNetwork() {
       state.mlRisk = riskData;
     }
   } catch (_) {}
+
+  // Single render pass — risk data is already in state
+  state.loadingMap = false;
   state.loadingRisk = false;
   window.render();
 
-  // Ensure map is rendered after risk render
+  // Initialize map AFTER the DOM is painted — never re-render after this point
   setTimeout(async () => {
     const oMap = await initMap('osm-map');
     if (oMap) {
-      oMap.invalidateSize();
+      oMap.invalidateSize(true);
       displayRoute(state.selectedRoute);
       startUserLocationTracking();
       if (state.selectedFacility) {
@@ -180,8 +157,9 @@ export async function initLiveNetwork() {
         displayFacilityRoute(state.selectedFacility);
       }
     }
-  }, 300);
+  }, 150);
 }
+
 
 
 window.saveTripToServer = async () => {
