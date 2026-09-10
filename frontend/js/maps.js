@@ -118,21 +118,39 @@ function setLocationStatus(text) {
 }
 
 async function updateRemainingDistance(position) {
-  if (!destinationPoint || Date.now() - lastRemainingRequest < 10000) return;
-  lastRemainingRequest = Date.now();
-  try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${position.coords.longitude},${position.coords.latitude};${destinationPoint.lng},${destinationPoint.lat}?overview=false`;
-    const response = await fetch(url);
-    const data = await response.json();
-    const distance = data.routes?.[0]?.distance;
-    if (distance == null) return;
-    state.remainingDistance = `${(distance / 1000).toFixed(1)} km`;
-    const element = document.getElementById('remaining-distance');
-    if (element) element.textContent = state.remainingDistance;
-  } catch (error) {
-    setLocationStatus('Live location available; remaining route distance is temporarily unavailable.');
+  if (!state.selectedRoute || !state.selectedRoute.geometry) return;
+  
+  const coords = state.selectedRoute.geometry.coordinates;
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
+  
+  // We need to import snapToRoute, distanceAlongRoute, formatDistance, formatDuration
+  // To avoid circular or missing imports, we dynamically import geo.js here
+  const { snapToRoute, distanceAlongRoute, formatDistance, formatDuration } = await import('./geo.js');
+  
+  const snap = snapToRoute(lat, lon, coords);
+  if (!snap) return;
+  
+  if (snap.distanceToRoute > 2000) { // 2km off route
+    setLocationStatus('⚠ You appear to be off route.');
+    return;
   }
+  
+  const remainingMeters = distanceAlongRoute(snap, coords);
+  state.remainingDistance = formatDistance(remainingMeters);
+  
+  const totalMeters = state.selectedRoute.distanceValue || 1;
+  const totalSecs = state.selectedRoute.durationValue || 1;
+  const remainingSecs = (remainingMeters / totalMeters) * totalSecs;
+  state.remainingDuration = formatDuration(remainingSecs);
+  
+  const distEl = document.getElementById('remaining-distance');
+  if (distEl) distEl.textContent = state.remainingDistance;
+  
+  const etaEl = document.getElementById('remaining-eta');
+  if (etaEl) etaEl.textContent = state.remainingDuration;
 }
+
 
 export function startUserLocationTracking() {
   if (!map || !navigator.geolocation) {
@@ -171,14 +189,23 @@ export function clearMarkers() {
 export function addFacilityMarkers(facilities) {
   pendingFacilities = facilities || [];
   if (!map) return;
-  const colors = { hospital: '#ef4444', lodging: '#fb923c', gas_station: '#5eead4' };
-  const labels = { hospital: 'Hospital', lodging: 'Hotel', gas_station: 'Petrol pump' };
+  const TYPE_LABEL = { hospital: 'Hospital', lodging: 'Hotel / Lodge', gas_station: 'Petrol Pump', restaurant: 'Restaurant / Dhaba', pharmacy: 'Pharmacy', police: 'Police Station', parking: 'Parking', car_repair: 'Vehicle Repair', atm: 'ATM' };
+  const TYPE_COLOR = { hospital: '#ef4444', lodging: '#fb923c', gas_station: '#5eead4', restaurant: '#a78bfa', pharmacy: '#34d399', police: '#60a5fa', parking: '#94a3b8', car_repair: '#fbbf24', atm: '#6ee7b7' };
+
   facilities.forEach(facility => {
     if (!facility.coordinates) return;
-    const color = colors[facility.facilityType] || '#94a3b8';
+    const color = TYPE_COLOR[facility.facilityType] || '#94a3b8';
+    const label = TYPE_LABEL[facility.facilityType] || escapeHtml(facility.facilityType);
+    let popupHtml = `<b>${escapeHtml(facility.name)}</b><br><span style="color:${color}">${label}</span>`;
+    if (facility.address) popupHtml += `<br><small style="color:#cbd5e1">${escapeHtml(facility.address)}</small>`;
+    if (facility.distanceMeters != null) {
+      const dist = facility.distanceMeters >= 1000 ? (facility.distanceMeters/1000).toFixed(1) + ' km' : Math.round(facility.distanceMeters) + ' m';
+      popupHtml += `<br><small style="color:#94a3b8">📍 ${dist} off route</small>`;
+    }
+
     const marker = L.circleMarker([facility.coordinates.lat, facility.coordinates.lng], { radius: 7, color: '#fff', weight: 2, fillColor: color, fillOpacity: 0.95 })
       .addTo(map)
-      .bindPopup(`<b>${escapeHtml(facility.name)}</b><br><span style="color:${color}">${labels[facility.facilityType] || escapeHtml(facility.facilityType)}</span><br><small>${escapeHtml(facility.address)}</small>`);
+      .bindPopup(popupHtml);
     markers.push(marker);
   });
 }

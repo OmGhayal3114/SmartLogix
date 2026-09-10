@@ -3,7 +3,7 @@
 import { state } from '../state.js';
 import { api } from '../api.js';
 import { t } from '../i18n.js';
-import { initMap, displayRoute, startUserLocationTracking, addAlertMarkers } from '../maps.js';
+import { initMap, displayRoute, startUserLocationTracking } from '../maps.js';
 
 
 function esc(s) {
@@ -62,8 +62,12 @@ export function renderLivePage() {
         : ''}
       <div style="position:absolute;left:12px;bottom:12px;z-index:500;background:#07111fe8;border:1px solid #2dd4bf44;border-radius:8px;padding:9px 11px;color:#cbd5e1;font-size:11px;max-width:260px">
         <div id="location-status">Live location is not active.</div>
-        <div style="margin-top:5px">Remaining distance: <b id="remaining-distance">—</b></div>
+        <div style="margin-top:5px;display:flex;justify-content:space-between">
+          <span>Remaining: <b id="remaining-distance">—</b></span>
+          <span style="color:var(--teal)">ETA: <b id="remaining-eta">—</b></span>
+        </div>
         ${state.selectedFacility ? `<div id="facility-direction-info" style="margin-top:5px;color:#fb923c">Calculating directions to ${esc(state.selectedFacility.name)}…</div>` : ''}
+
         ${state.selectedFacility ? `<div id="facility-directions-list" style="margin-top:7px;max-height:130px;overflow:auto;color:#e2e8f0">Loading turn-by-turn directions…</div>` : ''}
       </div>
     </div>
@@ -113,69 +117,20 @@ export function renderLivePage() {
         }
       </div>
 
-      <!-- Route Alerts -->
-      <div class="card">
-        <div class="eyebrow" style="color:var(--orange);margin-bottom:12px">${t('live.relevantAlerts')}</div>
-        ${state.loadingAlerts
-          ? `<div style="color:var(--muted)">${t('live.loadingAlerts')}</div>`
-          : state.routeAlerts.length === 0
-          ? `<div style="padding:12px;background:#34d39912;border:1px solid #34d39944;border-radius:8px;color:#86efac;font-size:13px"><b>Safer to travel</b><br><span style="font-size:11px">No active verified alerts detected for this route.</span></div>`
-          : state.routeAlerts.map(a => alertCard(a)).join('')
-        }
-      </div>
-
+      <!-- Route Alerts removed as requested -->
     </div>
+
 
   </section>`;
 }
 
-function alertCard(a) {
 
-  const tone = { CRITICAL: 'danger', HIGH: 'warning', MEDIUM: 'warning', LOW: '' };
-  return `
-  <div class="alert">
-    <div class="row">
-      <span class="badge ${tone[a.severity] || ''}">${a.severity}</span>
-      <span class="muted">${esc(a.state)}</span>
-    </div>
-    <div class="small" style="margin-top:8px">${esc(a.title)}</div>
-    <div class="muted" style="margin-top:4px">${esc(a.location)}</div>
-  </div>`;
-}
-
-function facilityCard(f) {
-  const typeLabel = { hospital: 'Hospital', lodging: 'Hotel', gas_station: 'Fuel Station' };
-  const typeColor = { hospital: 'var(--red)', lodging: 'var(--orange)', gas_station: 'var(--teal)' };
-  return `
-  <div class="facility" style="cursor:pointer" onclick="selectFacilityFromLive('${esc(f.placeId)}')" title="Show directions on map">
-    <div class="row">
-      <div>
-        <b style="font-size:13px">${esc(f.name)}</b>
-        <div class="muted" style="margin-top:4px;font-size:11px">${esc(f.address || '')}</div>
-      </div>
-      <span class="badge" style="color:${typeColor[f.facilityType] || 'var(--teal)'}">${typeLabel[f.facilityType] || f.facilityType}</span>
-    </div>
-    <div style="margin-top:8px">
-      ${f.rating ? `<span class="muted">⭐ ${f.rating}</span>` : ''}
-      ${f.openNow != null ? `<span class="badge ${f.openNow ? 'success' : 'warning'}" style="margin-left:8px">${f.openNow ? 'Open' : 'Closed'}</span>` : ''}
-    </div>
-  </div>`;
-}
-
-window.selectFacilityFromLive = async (placeId) => {
-  const facility = state.facilities.find(item => String(item.placeId) === String(placeId));
-  if (!facility) return;
-  state.selectedFacility = facility;
-  const { go } = await import('../router.js');
-  go('Live Network');
-};
 
 export async function initLiveNetwork() {
   if (!state.selectedRoute) return;
 
   state.loadingMap = true;
   state.loadingRisk = true;
-  state.loadingAlerts = true;
   window.render();
 
   // Initialize the OpenStreetMap/Leaflet renderer
@@ -196,10 +151,9 @@ export async function initLiveNetwork() {
     window.render();
   }
 
-  // Parallel data fetches (no facilities here — they are on the Facilities page)
-  const [riskRes, alertsRes] = await Promise.allSettled([
-    api.getRouteRisk({ origin: state.origin, destination: state.destination, vehicleType: state.vehicleType }),
-    api.getRouteAlerts(state.origin, state.destination)
+  // Fetch risk (alerts removed)
+  const [riskRes] = await Promise.allSettled([
+    api.getRouteRisk({ origin: state.origin, destination: state.destination, vehicleType: state.vehicleType })
   ]);
 
   if (riskRes.status === 'fulfilled' && !state.selectedRoute.risk) {
@@ -207,11 +161,10 @@ export async function initLiveNetwork() {
   }
   state.loadingRisk = false;
 
-  if (alertsRes.status === 'fulfilled') {
-    state.routeAlerts = alertsRes.value.alerts || [];
-    setTimeout(() => addAlertMarkers(state.routeAlerts), 600);
+  const { loadFacilitiesPage } = await import('./facilities.js');
+  if (!state.facilities || state.facilities.length === 0 || state._loadedRouteForFacilities !== state.selectedRoute) {
+    await loadFacilitiesPage();
   }
-  state.loadingAlerts = false;
 
   window.render();
   // Recreate Leaflet after render so map remains visible after data loads.
@@ -220,7 +173,10 @@ export async function initLiveNetwork() {
     if (liveMap) {
       displayRoute(state.selectedRoute);
       startUserLocationTracking();
-      addAlertMarkers(state.routeAlerts);
+      if (state.facilities && state.facilities.length > 0 && state._loadedRouteForFacilities === state.selectedRoute) {
+        const { addFacilityMarkers } = await import('../maps.js');
+        addFacilityMarkers(state.facilities);
+      }
     }
   }, 50);
 }
