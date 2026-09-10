@@ -114,17 +114,21 @@ export async function initMap(containerId = 'osm-map') {
     zoomControl: false // custom position
   });
 
-  // OpenStreetMap CartoDB Dark Matter tiles (beautiful dark theme using OSM data)
-  const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  // Official OpenStreetMap tiles (natural green landscape, zero API key required)
+  const osmTiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    subdomains: 'abcd',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/" target="_blank">CARTO</a>'
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
   }).addTo(map);
 
-  // Fallback to standard OpenStreetMap tiles if CartoDB is unavailable
-  darkTiles.on('tileerror', () => {
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // Force Leaflet to recalculate container size (fixes blank map on first load)
+  setTimeout(() => { try { map.invalidateSize(true); } catch(_) {} }, 50);
+  setTimeout(() => { try { map.invalidateSize(true); } catch(_) {} }, 300);
+
+  // Fallback to OSM Humanitarian tiles if needed
+  osmTiles.on('tileerror', () => {
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
       maxZoom: 19,
+      subdomains: ['a', 'b', 'c'],
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
     }).addTo(map);
   });
@@ -237,10 +241,10 @@ export function displayRoute(route) {
 
   if (!route.geometry) return;
 
-  // Draw road route line
+  // Draw road route line in vibrant navigation green
   mainRouteLayer = L.geoJSON(route.geometry, {
     style: {
-      color: '#14b8a6',
+      color: '#10b981',
       weight: 6,
       opacity: 0.95,
       lineCap: 'round',
@@ -567,9 +571,9 @@ export function returnToMainRoute() {
     state.selectedRoute = state._originalMainRoute;
   }
 
-  // Restore main route opacity
+  // Restore main route opacity & green styling
   if (mainRouteLayer) {
-    mainRouteLayer.setStyle({ opacity: 0.95, weight: 6 });
+    mainRouteLayer.setStyle({ opacity: 0.95, weight: 6, color: '#10b981' });
     map.fitBounds(mainRouteLayer.getBounds(), { padding: [40, 40] });
   }
 

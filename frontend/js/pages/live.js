@@ -51,7 +51,7 @@ export function renderLivePage() {
     </div>
 
     <!-- OpenStreetMap Leaflet interactive container -->
-    <div id="osm-map" style="height:480px;border-radius:12px;border:1px solid #2dd4bf26;background:#040a12;position:relative;overflow:hidden;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.6)">
+    <div id="osm-map" style="height:480px;border-radius:12px;border:1px solid #2dd4bf26;background:#040a12;position:relative;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.6);z-index:0">
       ${state.loadingMap
         ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#040a12;z-index:10">
              <div style="text-align:center;color:var(--teal)">
@@ -139,6 +139,7 @@ export async function initLiveNetwork() {
     setTimeout(async () => {
       const oMap = await initMap('osm-map');
       if (oMap) {
+        oMap.invalidateSize();
         displayRoute(state.selectedRoute);
         startUserLocationTracking();
         if (state.selectedFacility) {
@@ -146,7 +147,7 @@ export async function initLiveNetwork() {
           displayFacilityRoute(state.selectedFacility);
         }
       }
-    }, 100);
+    }, 200);
   } catch (err) {
     state.loadingMap = false;
     console.error('[OpenStreetMap]', err.message);
@@ -171,6 +172,7 @@ export async function initLiveNetwork() {
   setTimeout(async () => {
     const oMap = await initMap('osm-map');
     if (oMap) {
+      oMap.invalidateSize();
       displayRoute(state.selectedRoute);
       startUserLocationTracking();
       if (state.selectedFacility) {
@@ -178,7 +180,7 @@ export async function initLiveNetwork() {
         displayFacilityRoute(state.selectedFacility);
       }
     }
-  }, 50);
+  }, 300);
 }
 
 
