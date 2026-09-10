@@ -52,25 +52,53 @@ exports.calculateRoutes = async (req, res, next) => {
         risk: risks[index] || null
       }));
 
-      if (enrichedRoutes.length > 1) {
-        enrichedRoutes = enrichedRoutes
-          .map((route, originalIndex) => ({ route, originalIndex }))
-          .sort((a, b) => {
-            const aScore = Number.isFinite(a.route.risk?.score)
-              ? a.route.risk.score
-              : Infinity;
-            const bScore = Number.isFinite(b.route.risk?.score)
-              ? b.route.risk.score
-              : Infinity;
+      // If primary route has HIGH or VERY HIGH risk (score >= 50%),
+      // proactively calculate and suggest an alternate lower-risk route
+      const primaryRoute = enrichedRoutes[0];
+      const primaryRiskScore = primaryRoute?.risk?.score || 0;
+      const primaryRiskLevel = primaryRoute?.risk?.risk || 'LOW';
+      const isPrimaryHighRisk = primaryRiskLevel === 'HIGH' || primaryRiskLevel === 'VERY HIGH' || primaryRiskScore >= 50;
 
-            if (aScore !== bScore) return aScore - bScore;
-            return a.originalIndex - b.originalIndex;
-          })
-          .map(({ route }, index) => ({
-            ...route,
-            index
-          }));
+      if (isPrimaryHighRisk && primaryRoute?.origin && primaryRoute?.destination) {
+        const hasSafeExistingRoute = enrichedRoutes.slice(1).some(r => r.risk && r.risk.score < 50);
+
+        if (!hasSafeExistingRoute) {
+          try {
+            const altRoute = await mapsService.findAlternateSafetyRoute({
+              origin,
+              destination,
+              originPoint: primaryRoute.origin,
+              destinationPoint: primaryRoute.destination,
+              vehicleType: vehicleType || 'Truck',
+              primaryRoute,
+              primaryRiskScore
+            });
+
+            if (altRoute) {
+              altRoute.index = enrichedRoutes.length;
+              enrichedRoutes.push(altRoute);
+            }
+          } catch (altErr) {
+            console.warn('[Route Risk] Alternate safety route search failed:', altErr.message);
+          }
+        }
       }
+
+      // Mark routes with safety comparison metadata
+      if (enrichedRoutes.length > 0) {
+        enrichedRoutes[0].isDirectRoute = true;
+      }
+      enrichedRoutes.forEach((route, idx) => {
+        route.index = idx;
+        if (idx > 0 && route.risk && route.risk.score < primaryRiskScore) {
+          route.isAlternateSafetyRoute = true;
+          route.isRecommendedForSafety = true;
+          route.riskReductionPct = Math.max(
+            0,
+            Math.round(((primaryRiskScore - route.risk.score) / primaryRiskScore) * 100)
+          );
+        }
+      });
     } catch (riskErr) {
       console.warn(
         '[Route Risk] Risk enrichment failed; returning normal routes:',
@@ -78,7 +106,18 @@ exports.calculateRoutes = async (req, res, next) => {
       );
     }
 
-    return res.json({ routes: enrichedRoutes });
+    const hasAlternate = enrichedRoutes.some(r => r.isAlternateSafetyRoute || r.isRecommendedForSafety);
+    const primaryRiskScore = enrichedRoutes[0]?.risk?.score || 0;
+    const isPrimaryHighRisk = enrichedRoutes[0]?.risk?.risk === 'HIGH' ||
+                              enrichedRoutes[0]?.risk?.risk === 'VERY HIGH' ||
+                              primaryRiskScore >= 50;
+
+    return res.json({
+      routes: enrichedRoutes,
+      hasHighRiskAlert: isPrimaryHighRisk,
+      highRiskScore: primaryRiskScore,
+      alternateRouteSuggested: hasAlternate
+    });
   } catch (err) {
     return res.status(502).json({
       error:

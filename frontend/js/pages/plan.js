@@ -89,7 +89,10 @@ export function renderPlanPage() {
              </div></div>`
           : state.routes.length === 0
           ? `<div class="empty"><div><b>${t('plan.noRoutes')}</b></div></div>`
-          : state.routes.map((r, i) => routeCard(r, i)).join('')
+          : `
+            ${renderSafetyAlternateBanner()}
+            ${state.routes.map((r, i) => routeCard(r, i)).join('')}
+          `
         }
       </div>
 
@@ -97,14 +100,76 @@ export function renderPlanPage() {
   </section>`;
 }
 
-function routeCard(r, i) {
-  const cachedRisk = window._routeRiskCache && window._routeRiskCache[i];
+function renderSafetyAlternateBanner() {
+  const routes = state.routes || [];
+  if (routes.length < 2) return '';
+
+  const primary = routes[0];
+  const primaryRisk = primary?.risk?.score ?? (window._routeRiskCache?.[0]?.overall?.score ?? 0);
+  const isHighRisk = (primary?.risk?.risk === 'HIGH' || primary?.risk?.risk === 'VERY HIGH' || primaryRisk >= 50);
+
+  const saferRoute = routes.find((r, idx) => idx > 0 && (r.isAlternateSafetyRoute || r.isRecommendedForSafety));
+  if (!isHighRisk && !saferRoute) return '';
+
+  const altRisk = saferRoute?.risk?.score ?? (window._routeRiskCache?.[1]?.overall?.score ?? 0);
+  const reduction = saferRoute?.riskReductionPct || (primaryRisk > altRisk ? Math.round(((primaryRisk - altRisk) / primaryRisk) * 100) : 0);
+
   return `
-  <div class="route">
+    <div class="safety-alert-banner" style="margin-bottom:16px;padding:14px 16px;border-radius:10px;background:linear-gradient(135deg, #ef444418 0%, #0f172a 100%);border:1px solid #ef444455;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <span style="font-size:24px;line-height:1">⚠️</span>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <strong style="color:#f87171;font-size:13px;letter-spacing:0.5px">HIGH RISK DETECTED ON DIRECT ROUTE</strong>
+            <span class="badge" style="background:#ef444430;color:#fca5a5;border:1px solid #ef444460;font-size:10px">
+              Direct Highway: ${primaryRisk}% Risk
+            </span>
+            ${saferRoute ? `
+              <span class="badge" style="background:#10b98130;color:#6ee7b7;border:1px solid #10b98160;font-size:10px;font-weight:700">
+                🛡️ Alternate Detour Suggested: ${altRisk}% Risk (${reduction}% Safer)
+              </span>
+            ` : ''}
+          </div>
+          <p style="margin:6px 0 0;font-size:12px;color:#cbd5e1;line-height:1.45">
+            Elevated weather, landslide, or flood hazards detected along the direct corridor. SmartLogix has automatically calculated a lower-hazard alternate safety detour. Review both options below and select your preferred route.
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function routeCard(r, i) {
+  const cachedRisk = (window._routeRiskCache && window._routeRiskCache[i]) || (r.risk?.overall ? {
+    overall: r.risk.overall,
+    factors: r.risk.factors,
+    segments: r.risk.segments,
+    recommendation: r.risk.recommendation,
+    keyFactors: r.risk.keyFactors,
+    confidencePct: r.risk.confidencePct
+  } : null);
+
+  const isSaferAlt = r.isAlternateSafetyRoute || r.isRecommendedForSafety;
+  const isDirect = i === 0 || r.isDirectRoute;
+  const isHighRisk = cachedRisk?.overall?.level === 'HIGH' || cachedRisk?.overall?.level === 'VERY HIGH' || (cachedRisk?.overall?.score >= 50);
+
+  return `
+  <div class="route" style="${isSaferAlt ? 'border:1px solid #10b98155;background:#051b1740' : ''}">
     <div class="row">
       <div>
-        <b>${esc(r.summary)}</b>
-        ${i === 0 ? `<span class="badge info" style="margin-left:8px">${t('plan.recommended')}</span>` : ''}
+        <b style="${isSaferAlt ? 'color:#5eead4' : ''}">${esc(r.summary)}</b>
+        ${isSaferAlt ? `
+          <span class="badge success" style="margin-left:8px;background:#10b98125;color:#34d399;border:1px solid #10b98160;font-weight:700">
+            🛡️ SAFER ALTERNATE ${r.riskReductionPct ? `(${r.riskReductionPct}% LOWER RISK)` : ''}
+          </span>
+        ` : (isDirect && isHighRisk) ? `
+          <span class="badge warning" style="margin-left:8px;background:#f9731625;color:#fb923c;border:1px solid #f9731660">
+            DIRECT HIGHWAY (HIGH RISK)
+          </span>
+        ` : (i === 0 ? `
+          <span class="badge info" style="margin-left:8px">${t('plan.recommended')}</span>
+        ` : '')}
+
         ${cachedRisk?.overall ? `
           <span class="risk-overall-chip" style="display:inline-flex;margin-left:8px;padding:2px 8px;font-size:10px;background:${cachedRisk.overall.color}20;border:1px solid ${cachedRisk.overall.color}60;color:${cachedRisk.overall.color}">
             ${cachedRisk.overall.level} · ${cachedRisk.overall.score}% Risk
@@ -112,8 +177,10 @@ function routeCard(r, i) {
         ` : ''}
         <div class="muted" style="margin-top:8px">${esc(r.startAddress || '')} → ${esc(r.endAddress || '')}</div>
       </div>
-      <button class="btn ${i === 0 ? 'primary' : ''}" onclick="selectRoute(${i})">
-        ${t('plan.selectRoute')}
+      <button class="btn ${isSaferAlt ? 'primary' : (i === 0 && !isHighRisk ? 'primary' : '')}"
+        style="${isSaferAlt ? 'background:#10b981;border-color:#10b981;color:#040a12;font-weight:700;box-shadow:0 0 14px rgba(16,185,129,0.35)' : ''}"
+        onclick="selectRoute(${i})">
+        ${isSaferAlt ? 'Select Safer Route' : t('plan.selectRoute')}
       </button>
     </div>
     <div class="route-grid">
@@ -260,12 +327,35 @@ window.calculateRoutes = async () => {
       vehicleType: state.vehicleType
     });
     state.routes = data.routes || [];
+    state.hasHighRiskAlert = data.hasHighRiskAlert || false;
+    state.alternateRouteSuggested = data.alternateRouteSuggested || false;
+
+    // Immediately seed the risk cache from the server ML enrichment
+    if (!window._routeRiskCache) window._routeRiskCache = {};
+    state.routes.forEach((r, idx) => {
+      if (r.risk && r.risk.overall) {
+        window._routeRiskCache[idx] = {
+          success: true,
+          overall: r.risk.overall,
+          factors: r.risk.factors,
+          segments: r.risk.segments,
+          recommendation: r.risk.recommendation,
+          keyFactors: r.risk.keyFactors,
+          confidencePct: r.risk.confidencePct
+        };
+      }
+    });
+
     state.routeReady = true;
     state.loadingRoutes = false;
-    state.loadingRouteRisk = true;
+    state.loadingRouteRisk = false;
     window.render();
 
-    fetchRiskAnalysisForAllRoutes();
+    // Check if any route needs background risk analysis
+    const hasUnanalyzed = state.routes.some((_, i) => !window._routeRiskCache[i]);
+    if (hasUnanalyzed) {
+      fetchRiskAnalysisForAllRoutes();
+    }
   } catch (err) {
     state.loadingRoutes = false;
     state.loadingRouteRisk = false;

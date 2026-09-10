@@ -272,6 +272,192 @@ async function getWaypointRoute(origin, waypoint, destination, vehicleType = 'Tr
   };
 }
 
+/**
+ * Known regional bypass and alternate corridors across the North Eastern Region.
+ * When a primary hill/river highway has HIGH risk (severe rain/landslides/floods),
+ * these provide safer alternate logistics corridors.
+ */
+const NER_CORRIDOR_BYPASSES = [
+  // Guwahati <-> Shillong / Meghalaya
+  {
+    matches: (o, d) => (
+      (o.lat > 25.9 && o.lat < 26.4 && o.lng > 91.5 && o.lng < 92.0 && d.lat > 25.3 && d.lat < 25.8 && d.lng > 91.6 && d.lng < 92.1) ||
+      (d.lat > 25.9 && d.lat < 26.4 && d.lng > 91.5 && d.lng < 92.0 && o.lat > 25.3 && o.lat < 25.8 && o.lng > 91.6 && o.lng < 92.1)
+    ),
+    waypoints: [
+      { name: 'Western Meghalaya Bypass (via Boko / Nongstoin)', lat: 25.52, lng: 91.267 },
+      { name: 'Mairang Bypass Corridor', lat: 25.56, lng: 91.63 },
+      { name: 'East Meghalaya Corridor (via Jowai)', lat: 25.44, lng: 92.21 }
+    ]
+  },
+  // Guwahati <-> Silchar / Barak Valley
+  {
+    matches: (o, d) => (
+      (o.lat > 25.9 && o.lat < 26.4 && d.lat > 24.6 && d.lat < 25.0 && d.lng > 92.6 && d.lng < 93.1) ||
+      (d.lat > 25.9 && d.lat < 26.4 && o.lat > 24.6 && o.lat < 25.0 && o.lng > 92.6 && o.lng < 93.1)
+    ),
+    waypoints: [
+      { name: 'Haflong Hill Corridor (NH-27 / NH-54)', lat: 25.17, lng: 93.02 },
+      { name: 'Jowai Escarpment Route (NH-6)', lat: 25.44, lng: 92.21 }
+    ]
+  },
+  // Guwahati <-> Tezpur / Upper Assam
+  {
+    matches: (o, d) => (
+      (o.lat > 25.9 && o.lat < 26.4 && d.lat > 26.5 && d.lat < 27.0 && d.lng > 92.6 && d.lng < 93.2) ||
+      (d.lat > 25.9 && d.lat < 26.4 && o.lat > 26.5 && o.lat < 27.0 && o.lng > 92.6 && o.lng < 93.2)
+    ),
+    waypoints: [
+      { name: 'North Bank Highway (NH-15 via Mangaldai)', lat: 26.44, lng: 92.03 },
+      { name: 'South Bank Highway (NH-715 via Nagaon)', lat: 26.35, lng: 92.68 }
+    ]
+  },
+  // Silchar <-> Imphal
+  {
+    matches: (o, d) => (
+      (o.lat > 24.6 && o.lat < 25.0 && d.lat > 24.6 && d.lat < 25.1 && d.lng > 93.8 && d.lng < 94.1) ||
+      (d.lat > 24.6 && d.lat < 25.0 && o.lat > 24.6 && o.lat < 25.1 && o.lng > 93.8 && o.lng < 94.1)
+    ),
+    waypoints: [
+      { name: 'North Kohima / Senapati Bypass', lat: 25.67, lng: 94.11 },
+      { name: 'Churachandpur Southern Corridor', lat: 24.33, lng: 93.67 }
+    ]
+  }
+];
+
+/**
+ * Searches and generates a safer alternate road route using intermediate corridor waypoints
+ * when the primary route has elevated/high risk.
+ */
+async function findAlternateSafetyRoute({
+  origin,
+  destination,
+  originPoint,
+  destinationPoint,
+  vehicleType = 'Truck',
+  primaryRoute,
+  primaryRiskScore = 50
+}) {
+  if (!originPoint || !destinationPoint) return null;
+
+  const primaryDist = primaryRoute?.distanceValue || 1;
+  const candidateWaypoints = [];
+
+  // 1. Check known NER regional corridor bypasses
+  for (const corridor of NER_CORRIDOR_BYPASSES) {
+    if (corridor.matches(originPoint, destinationPoint)) {
+      candidateWaypoints.push(...corridor.waypoints);
+    }
+  }
+
+  // 2. Generate lateral geometric offset waypoints (works anywhere)
+  const dx = destinationPoint.lng - originPoint.lng;
+  const dy = destinationPoint.lat - originPoint.lat;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist > 0.15) {
+    const nx = -dy / dist;
+    const ny = dx / dist;
+    const factors = [0.25, -0.25, 0.40, -0.40, 0.15, -0.15];
+    for (const factor of factors) {
+      candidateWaypoints.push({
+        name: factor > 0 ? 'Safety Bypass Detour (East/North Corridor)' : 'Safety Bypass Detour (West/South Corridor)',
+        lng: Number((originPoint.lng + dx * 0.5 + nx * dist * factor).toFixed(4)),
+        lat: Number((originPoint.lat + dy * 0.5 + ny * dist * factor).toFixed(4))
+      });
+    }
+  }
+
+  if (!candidateWaypoints.length) return null;
+
+  const routeRiskML = require('./routeRiskML');
+  const validCandidates = [];
+
+  // Query OSRM for candidate routes (test up to 5 candidates)
+  const candidatesToTest = candidateWaypoints.slice(0, 5);
+
+  await Promise.allSettled(
+    candidatesToTest.map(async (wp) => {
+      try {
+        const coords = `${originPoint.lng},${originPoint.lat};${wp.lng},${wp.lat};${destinationPoint.lng},${destinationPoint.lat}`;
+        const resp = await http.get(`${OSRM_URL}/${coords}`, {
+          params: { overview: 'full', geometries: 'geojson', steps: 'true' },
+          timeout: 8000
+        });
+
+        if (resp.data?.code !== 'Ok' || !resp.data.routes?.length) return;
+        const osrmRoute = resp.data.routes[0];
+
+        // Ensure candidate is a genuine detour (different distance and not ridiculously long)
+        const candDist = osrmRoute.distance;
+        if (Math.abs(candDist - primaryDist) < 5000) return; // Must differ by at least 5 km
+        if (candDist > primaryDist * 3.5) return; // Must not exceed 3.5x primary distance
+
+        const altRouteObj = {
+          index: 1,
+          summary: `Alternate Safety Bypass (${wp.name})`,
+          distance: `${(osrmRoute.distance / 1000).toFixed(1)} km`,
+          distanceValue: Math.round(osrmRoute.distance),
+          duration: formatDuration(osrmRoute.duration),
+          durationValue: Math.round(osrmRoute.duration),
+          durationInTraffic: null,
+          startAddress: originPoint.label || origin,
+          endAddress: destinationPoint.label || destination,
+          origin: originPoint,
+          destination: destinationPoint,
+          geometry: osrmRoute.geometry,
+          steps: (osrmRoute.legs?.[0]?.steps || []).map(formatStep).slice(0, 30),
+          vehicleType,
+          isAlternateSafetyRoute: true,
+          warnings: ['Alternate corridor evaluated to avoid high-hazard primary corridor.']
+        };
+
+        // Score this candidate with ML risk engine
+        const riskResult = await routeRiskML.analyzeRouteRisk({
+          route: altRouteObj,
+          origin,
+          destination,
+          vehicleType
+        });
+
+        if (!riskResult || !riskResult.success) return;
+
+        const riskObj = {
+          risk: riskResult.overall.level,
+          score: riskResult.overall.score,
+          overall: riskResult.overall,
+          factors: riskResult.factors,
+          segments: riskResult.segments,
+          recommendation: riskResult.overall.recommendation,
+          confidence: Number((riskResult.overall.confidencePct / 100).toFixed(2)),
+          confidencePct: riskResult.overall.confidencePct,
+          keyFactors: riskResult.overall.keyFactors,
+          scoringVersion: 'ml-route-risk-v2'
+        };
+
+        validCandidates.push({
+          route: {
+            ...altRouteObj,
+            risk: riskObj,
+            isRecommendedForSafety: riskResult.overall.score < primaryRiskScore
+          },
+          score: riskResult.overall.score
+        });
+      } catch (e) {
+        // Candidate query failed; ignore
+      }
+    })
+  );
+
+  if (!validCandidates.length) return null;
+
+  // Pick the candidate with the lowest risk score
+  validCandidates.sort((a, b) => a.score - b.score);
+  const best = validCandidates[0];
+
+  return best.route;
+}
+
 function elementPoint(element) {
   return element.type === 'node'
     ? [element.lat, element.lon]
@@ -504,8 +690,11 @@ async function getFacilitiesAlongRoute(origin, destination, types = ['hospital',
 module.exports = {
   getRoutes,
   getWaypointRoute,
+  findAlternateSafetyRoute,
+  formatDuration,
   getFacilitiesAlongRoute,
   geocode,
   suggest,
   reverseGeocode
 };
+

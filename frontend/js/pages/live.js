@@ -85,6 +85,33 @@ export function renderLivePage() {
           ${r.durationInTraffic ? `<div><small>${t('live.trafficEta')}</small><strong style="display:block;margin-top:5px">${esc(r.durationInTraffic)}</strong></div>` : ''}
         </div>
 
+        ${state.routes && state.routes.length > 1 ? `
+          <div style="margin-top:14px;padding:12px;border-radius:8px;background:#0c1524;border:1px solid #1e293b">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:11px;font-weight:600;color:var(--teal)">AVAILABLE CORRIDORS</span>
+              <span class="muted" style="font-size:10px">${state.routes.length} options</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${state.routes.map((rt, idx) => {
+                const isActive = rt === r || (rt.summary === r.summary && rt.distance === r.distance);
+                const rtRisk = rt.risk?.score ? `${rt.risk.score}% ${rt.risk.risk}` : '';
+                return `
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:6px;background:${isActive ? '#10b98118' : '#07101e'};border:1px solid ${isActive ? '#10b98155' : '#1e293b'}">
+                    <div style="font-size:11px">
+                      <b style="color:${isActive ? '#5eead4' : '#e2e8f0'}">${esc(rt.summary)}</b>
+                      <div class="muted" style="font-size:10px">${esc(rt.distance)} · ${esc(rt.duration)}${rtRisk ? ` · <span style="color:${rt.risk?.risk === 'HIGH' ? '#f87171' : '#34d399'}">${esc(rtRisk)}</span>` : ''}</div>
+                    </div>
+                    ${isActive
+                      ? `<span class="badge success" style="font-size:10px">Active</span>`
+                      : `<button class="btn" style="padding:3px 8px;font-size:10px" onclick="switchLiveRoute(${idx})">Switch</button>`
+                    }
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
         <!-- Unified ML Route Risk Intelligence Panel -->
         <div style="margin-top:20px;padding:16px;border-radius:10px;background:#090e17;border:1px solid #1e293b">
           ${state.loadingRisk
@@ -238,3 +265,25 @@ window.saveTripToServer = async () => {
     notify(err.message || 'Failed to save trip.', 'error');
   }
 };
+
+window.switchLiveRoute = async (idx) => {
+  const { notify } = await import('../render.js');
+  const route = state.routes && state.routes[idx];
+  if (!route) return;
+
+  state.selectedRoute = route;
+  state.selectedFacility = null;
+  state._originalMainRoute = route;
+
+  if (window._routeRiskCache && window._routeRiskCache[idx]?.segments) {
+    state.activeRiskSegments = window._routeRiskCache[idx].segments;
+  } else if (route.risk?.segments) {
+    state.activeRiskSegments = route.risk.segments;
+  }
+
+  notify(`Switched to: ${route.summary}`, 'success');
+  const { displayRoute } = await import('../maps.js');
+  displayRoute(route);
+  window.render();
+};
+
