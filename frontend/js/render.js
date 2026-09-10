@@ -180,6 +180,10 @@ export async function render() {
     `<main>${topbar()}<div id="page-content">${content}</div></main>` +
     toastEl() +
     renderAuthModal();
+
+  if (state.page === 'Plan Trip') {
+    import('./pages/plan.js').then(m => m.initPlanPage && m.initPlanPage());
+  }
 }
 
 // Expose render globally so auth.js and pages can call it

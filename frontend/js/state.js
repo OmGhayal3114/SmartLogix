@@ -57,7 +57,9 @@ export const state = {
   // Maps
   userLocation: null,
   locationError: null,
-  remainingDistance: null
+  remainingDistance: null,
+  remainingDuration: null,
+  _originalMainRoute: null
 };
 
 export function loadSession() {

@@ -1,4 +1,4 @@
-﻿// NER SmartLogix — Plan Trip page
+// NER SmartLogix — Plan Trip page
 
 import { state } from '../state.js';
 import { api } from '../api.js';
@@ -138,35 +138,27 @@ function routeCard(r, i) {
 window.useMyLocation = async () => {
   const { notify } = await import('../render.js');
   if (!navigator.geolocation) {
-    state.locationError = t('plan.geoNotSupported');
+    state.locationError = t('plan.geoNotSupported') || 'Geolocation is not supported by your browser.';
     window.render();
     return;
   }
   state.locationError = null;
-  // Show a detecting message in origin field
   const input = document.getElementById('origin-input');
-  if (input) input.placeholder = t('plan.detectingLocation');
+  if (input) input.placeholder = t('plan.detectingLocation') || 'Detecting your location…';
 
-  notify(t('plan.detectingLocation'), 'success');
+  notify(t('plan.detectingLocation') || 'Detecting your location…', 'success');
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
-      const { lat, lng } = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const { latitude: lat, longitude: lng } = pos.coords;
       state.userLocation = { lat, lng };
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
-          { headers: { 'Accept-Language': 'en' } }
-        );
-        const data = await res.json();
-        const addr = data.display_name
-          ? data.display_name.split(',').slice(0, 3).join(', ')
-          : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        const { reverseGeocodeOSM } = await import('../maps.js');
+        const addr = await reverseGeocodeOSM(lat, lng);
         state.origin = addr;
         state._detectedAddress = addr;
         state.locationError = null;
       } catch (e) {
-        // fallback to coordinates if reverse geocode fails
         state.origin = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         state._detectedAddress = state.origin;
       }
@@ -174,11 +166,12 @@ window.useMyLocation = async () => {
     },
     (err) => {
       const msgs = {
-        1: t('plan.locationDenied'),
-        2: t('plan.locationUnavailable'),
-        3: t('plan.locationTimeout')
+        1: 'Location permission was denied. Please allow location access in your browser address bar to auto-detect your location, or type it manually.',
+        2: 'Current GPS location is unavailable from your device. Please enter your origin manually.',
+        3: 'Location request timed out. Please try again or enter your origin manually.'
       };
-      state.locationError = msgs[err.code] || t('plan.locationError');
+      state.locationError = msgs[err.code] || 'Could not detect your current location. Please enter it manually.';
+      notify(state.locationError, 'error');
       window.render();
     },
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
@@ -229,7 +222,26 @@ window.selectRoute = async (index) => {
   if (!route) return;
   state.selectedRoute = route;
   state.selectedFacility = null;
+  state._originalMainRoute = route;
   notify(`Route selected: ${route.summary}`, 'success');
   const { go } = await import('../router.js');
   go('Live Network');
 };
+
+// Automatically attach OpenStreetMap / Photon Autocomplete on render
+export async function initPlanPage() {
+  setTimeout(async () => {
+    try {
+      const { attachOSMAutocomplete } = await import('../maps.js');
+      attachOSMAutocomplete('origin-input', (label, lat, lng) => {
+        state.origin = label;
+        state.userLocation = { lat, lng };
+      });
+      attachOSMAutocomplete('dest-input', (label) => {
+        state.destination = label;
+      });
+    } catch (e) {
+      console.warn('[Plan] Autocomplete init:', e.message);
+    }
+  }, 100);
+}

@@ -4,7 +4,7 @@ exports.getFacilitiesNearRoute = async (req, res, next) => {
   try {
     const { origin, destination, types } = req.query;
     if (!origin || !destination) return res.status(400).json({ error: 'Origin and destination are required.' });
-    const facilityTypes = types ? types.split(',') : ['hospital', 'lodging', 'gas_station'];
+    const facilityTypes = types ? types.split(',') : ['hospital', 'lodging', 'gas_station', 'car_repair', 'parking', 'restaurant'];
     const facilities = await mapsService.getFacilitiesAlongRoute(origin, destination, facilityTypes);
     res.json({ facilities });
   } catch (err) {

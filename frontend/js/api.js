@@ -1,6 +1,6 @@
 // Dynamic API base: localhost:5000 for local dev, /api for cloud deployment (Vercel)
 const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'http://localhost:5000/api'
+  ? `${window.location.protocol}//${window.location.hostname}:5000/api`
   : '/api';
 
 async function request(method, path, body, token) {
@@ -24,6 +24,9 @@ export const api = {
 
   // Routes
   calculateRoutes: (body) => request('POST', '/routes', body),
+  calculateWaypointRoute: (body) => request('POST', '/routes/waypoint', body),
+  suggestLocations: (q) => request('GET', '/routes/suggest?q=' + encodeURIComponent(q)),
+  reverseGeocode: (lat, lng) => request('GET', `/routes/reverse-geocode?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`),
 
   // Trips
   createTrip: (body, token) => request('POST', '/trips', body, token),

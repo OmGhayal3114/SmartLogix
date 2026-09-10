@@ -3,9 +3,15 @@
   "version": "1.0.0",
   "description": "NER Logistics Intelligence Platform",
   "scripts": {
+    "dev": "concurrently -k -n \"backend,frontend\" -c \"cyan,green\" \"npm run backend:dev\" \"npm run frontend\"",
+    "start": "concurrently -k -n \"backend,frontend\" -c \"cyan,green\" \"npm run backend\" \"npm run frontend\"",
+    "dev:all": "concurrently -k -n \"backend,frontend,ml\" -c \"cyan,green,yellow\" \"npm run backend:dev\" \"npm run frontend\" \"npm run ml\"",
     "backend": "cd backend && npm start",
     "backend:dev": "cd backend && npm run dev",
     "ml": "cd ml && uvicorn app:app --reload --port 8000",
-    "frontend": "cd frontend && npx serve . -p 3000"
+    "frontend": "npx --yes serve frontend -l 3000"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
   }
 }

@@ -1,4 +1,4 @@
-﻿{
+{
   "nav.home": "Home",
   "nav.planTrip": "Plan Trip",
   "nav.liveNetwork": "Live Network",
@@ -21,7 +21,7 @@
   "home.feat1Title": "Smart Route Planning",
   "home.feat1Desc": "Calculate optimised routes with real-time hazard risk scores, distance, duration, and traffic-aware ETA.",
   "home.feat2Title": "Live Network Tracking",
-  "home.feat2Desc": "Track your route on a live map with OpenStreetMap. Get remaining distance and route alerts in real-time.",
+  "home.feat2Desc": "Track your route on a live interactive map with OpenStreetMap. Get remaining distance, ETA, and accessibility services in real-time.",
   "home.feat3Title": "Nearby Facilities",
   "home.feat3Desc": "Find hospitals, petrol pumps, restaurants, hotels, police stations, and pharmacies along your route.",
   "home.feat4Title": "Safety & Emergency",

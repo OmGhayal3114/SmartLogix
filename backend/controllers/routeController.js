@@ -15,7 +15,6 @@ exports.calculateRoutes = async (req, res, next) => {
       vehicleType
     );
 
-
     let enrichedRoutes = routes;
 
     try {
@@ -29,7 +28,6 @@ exports.calculateRoutes = async (req, res, next) => {
         risk: risks[index] || null
       }));
 
- 
       if (enrichedRoutes.length > 1) {
         enrichedRoutes = enrichedRoutes
           .map((route, originalIndex) => ({ route, originalIndex }))
@@ -63,5 +61,42 @@ exports.calculateRoutes = async (req, res, next) => {
         err.message ||
         'Route calculation service is temporarily unavailable.'
     });
+  }
+};
+
+exports.calculateWaypointRoute = async (req, res) => {
+  try {
+    const { origin, waypoint, destination, vehicleType } = req.body;
+    if (!origin || !waypoint || !destination) {
+      return res.status(400).json({ error: 'Origin, waypoint, and destination are required.' });
+    }
+    const route = await mapsService.getWaypointRoute(origin, waypoint, destination, vehicleType);
+    return res.json({ route });
+  } catch (err) {
+    return res.status(502).json({
+      error: err.message || 'Could not calculate multi-stop route.'
+    });
+  }
+};
+
+exports.suggestLocations = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) return res.json({ suggestions: [] });
+    const suggestions = await mapsService.suggest(q);
+    return res.json({ suggestions });
+  } catch (err) {
+    return res.json({ suggestions: [] });
+  }
+};
+
+exports.reverseGeocodeLocation = async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+    if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
+    const data = await mapsService.reverseGeocode(parseFloat(lat), parseFloat(lng));
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Reverse geocoding failed.' });
   }
 };

@@ -50,25 +50,24 @@ export function renderLivePage() {
       <span class="badge success">Network operational</span>
     </div>
 
-    <!-- OpenStreetMap / Leaflet map container -->
-    <div id="osm-map" style="height:460px;border-radius:12px;border:1px solid #2dd4bf26;background:#040a12;position:relative;overflow:hidden;margin-bottom:24px">
+    <!-- OpenStreetMap Leaflet interactive container -->
+    <div id="osm-map" style="height:480px;border-radius:12px;border:1px solid #2dd4bf26;background:#040a12;position:relative;overflow:hidden;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.6)">
       ${state.loadingMap
-        ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#040a12">
+        ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#040a12;z-index:10">
              <div style="text-align:center;color:var(--teal)">
                <div style="font-size:32px;margin-bottom:10px">◎</div>
-               ${t('live.loadingMap')}
+               ${t('live.loadingMap') || 'Loading OpenStreetMap navigation…'}
              </div>
            </div>`
         : ''}
-      <div style="position:absolute;left:12px;bottom:12px;z-index:500;background:#07111fe8;border:1px solid #2dd4bf44;border-radius:8px;padding:9px 11px;color:#cbd5e1;font-size:11px;max-width:260px">
-        <div id="location-status">Live location is not active.</div>
-        <div style="margin-top:5px;display:flex;justify-content:space-between">
-          <span>Remaining: <b id="remaining-distance">—</b></span>
-          <span style="color:var(--teal)">ETA: <b id="remaining-eta">—</b></span>
+      <div style="position:absolute;left:14px;bottom:14px;z-index:5;background:#07111fee;border:1px solid #2dd4bf44;border-radius:8px;padding:10px 14px;color:#cbd5e1;font-size:11px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,0.5)">
+        <div id="location-status" style="font-weight:500">Live GPS ready</div>
+        <div style="margin-top:6px;display:flex;justify-content:space-between;gap:12px">
+          <span>Remaining: <b id="remaining-distance" style="color:#ffffff">${state.remainingDistance || '—'}</b></span>
+          <span style="color:var(--teal)">ETA: <b id="remaining-eta" style="color:#5eead4">${state.remainingDuration || '—'}</b></span>
         </div>
-        ${state.selectedFacility ? `<div id="facility-direction-info" style="margin-top:5px;color:#fb923c">Calculating directions to ${esc(state.selectedFacility.name)}…</div>` : ''}
-
-        ${state.selectedFacility ? `<div id="facility-directions-list" style="margin-top:7px;max-height:130px;overflow:auto;color:#e2e8f0">Loading turn-by-turn directions…</div>` : ''}
+        <div id="facility-direction-info" style="margin-top:8px"></div>
+        <div id="facility-directions-list" style="margin-top:6px;max-height:140px;overflow-y:auto;color:#e2e8f0"></div>
       </div>
     </div>
 
@@ -133,49 +132,50 @@ export async function initLiveNetwork() {
   state.loadingRisk = true;
   window.render();
 
-  // Initialize the OpenStreetMap/Leaflet renderer
   try {
     state.loadingMap = false;
     window.render();
-    // Small delay so the DOM updates before initializing Leaflet.
+
     setTimeout(async () => {
-      const map = await initMap('osm-map');
-      if (map) {
+      const oMap = await initMap('osm-map');
+      if (oMap) {
         displayRoute(state.selectedRoute);
         startUserLocationTracking();
+        if (state.selectedFacility) {
+          const { displayFacilityRoute } = await import('../maps.js');
+          displayFacilityRoute(state.selectedFacility);
+        }
       }
-    }, 150);
+    }, 100);
   } catch (err) {
     state.loadingMap = false;
-    console.error('[Maps]', err.message);
+    console.error('[OpenStreetMap]', err.message);
     window.render();
   }
 
-  // Fetch risk (alerts removed)
-  const [riskRes] = await Promise.allSettled([
-    api.getRouteRisk({ origin: state.origin, destination: state.destination, vehicleType: state.vehicleType })
-  ]);
-
-  if (riskRes.status === 'fulfilled' && !state.selectedRoute.risk) {
-    state.mlRisk = riskRes.value;
-  }
+  // Fetch ML risk in background
+  try {
+    const riskData = await api.getRouteRisk({
+      origin: state.origin,
+      destination: state.destination,
+      vehicleType: state.vehicleType
+    });
+    if (!state.selectedRoute.risk) {
+      state.mlRisk = riskData;
+    }
+  } catch (_) {}
   state.loadingRisk = false;
-
-  const { loadFacilitiesPage } = await import('./facilities.js');
-  if (!state.facilities || state.facilities.length === 0 || state._loadedRouteForFacilities !== state.selectedRoute) {
-    await loadFacilitiesPage();
-  }
-
   window.render();
-  // Recreate Leaflet after render so map remains visible after data loads.
+
+  // Ensure map is rendered after risk render
   setTimeout(async () => {
-    const liveMap = await initMap('osm-map');
-    if (liveMap) {
+    const oMap = await initMap('osm-map');
+    if (oMap) {
       displayRoute(state.selectedRoute);
       startUserLocationTracking();
-      if (state.facilities && state.facilities.length > 0 && state._loadedRouteForFacilities === state.selectedRoute) {
-        const { addFacilityMarkers } = await import('../maps.js');
-        addFacilityMarkers(state.facilities);
+      if (state.selectedFacility) {
+        const { displayFacilityRoute } = await import('../maps.js');
+        displayFacilityRoute(state.selectedFacility);
       }
     }
   }, 50);

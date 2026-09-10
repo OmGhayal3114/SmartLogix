@@ -14,6 +14,9 @@ export function go(page) {
   window.render();
 
   // Trigger page-specific data loading
+  if (page === 'Plan Trip') {
+    import('./pages/plan.js').then(m => m.initPlanPage && m.initPlanPage());
+  }
   if (page === 'My Trip' && state.user) {
     import('./pages/mytrip.js').then(m => m.loadMyTrips());
   }
