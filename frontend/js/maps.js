@@ -447,17 +447,18 @@ export async function displayFacilityRoute(facility) {
   }
   state.selectedFacility = facility;
 
-  let startLat = state.userLocation?.lat;
-  let startLng = state.userLocation?.lng;
+  // Always use the planned route's origin as the start point for facility directions.
+  // Never use userLocation (device GPS) — the detour is relative to the trip, not the physical device position.
+  let startLat, startLng;
 
-  if (!startLat || !startLng) {
-    if (state.selectedRoute?.origin?.lat) {
-      startLat = state.selectedRoute.origin.lat;
-      startLng = state.selectedRoute.origin.lng;
-    } else if (state.selectedRoute?.geometry?.coordinates?.[0]) {
-      startLat = state.selectedRoute.geometry.coordinates[0][1];
-      startLng = state.selectedRoute.geometry.coordinates[0][0];
-    }
+  if (state.selectedRoute?.origin?.lat) {
+    // Use the geocoded origin from the OSRM route result
+    startLat = state.selectedRoute.origin.lat;
+    startLng = state.selectedRoute.origin.lng;
+  } else if (state.selectedRoute?.geometry?.coordinates?.[0]) {
+    // Fall back to the first coordinate of the route geometry
+    startLat = state.selectedRoute.geometry.coordinates[0][1];
+    startLng = state.selectedRoute.geometry.coordinates[0][0];
   }
 
   if (!startLat || !startLng) return;
