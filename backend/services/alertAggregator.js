@@ -259,11 +259,11 @@ exports.seedSampleAlerts = async () => {
       source: 'Sample Data (External API unavailable)', sourceUrl: '', priorityScore: 85, status: 'active'
     },
     {
-      title: 'Road Blockage Reported — Guwahati-Shillong Highway',
-      description: 'A road blockage has been reported on the Guwahati-Shillong highway (NH6) near Nongpoh due to ongoing construction activity. Expect delays of 1-2 hours. One-lane traffic in operation.',
-      location: 'Nongpoh, Ri Bhoi', district: 'Ri Bhoi', state: 'Meghalaya',
-      severity: 'MEDIUM', alertType: 'Road Blockage',
-      source: 'Sample Data (External API unavailable)', sourceUrl: '', priorityScore: 70, status: 'active'
+      title: 'Monsoon Highway Advisory — Guwahati-Shillong Corridor',
+      description: 'Monsoon driving advisory for Guwahati-Shillong highway (NH6). Drivers advised to maintain safe following distance and check brake response on downhill stretches.',
+      location: 'Ri Bhoi District', district: 'Ri Bhoi', state: 'Meghalaya',
+      severity: 'LOW', alertType: 'Weather',
+      source: 'Sample Data (External API unavailable)', sourceUrl: '', priorityScore: 30, status: 'active'
     },
     {
       title: 'Bridge Maintenance — Arunachal Pradesh NH415',

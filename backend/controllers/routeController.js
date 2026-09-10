@@ -1,5 +1,5 @@
 const mapsService = require('../services/osmMaps');
-const routeRiskEngine = require('../services/routeRiskEngine');
+const routeRiskML = require('../services/routeRiskML');
 
 exports.calculateRoutes = async (req, res, next) => {
   try {
@@ -18,9 +18,33 @@ exports.calculateRoutes = async (req, res, next) => {
     let enrichedRoutes = routes;
 
     try {
-      const risks = await routeRiskEngine.scoreRoutes(
-        routes,
-        vehicleType || 'Truck'
+      const risks = await Promise.all(
+        routes.map(async (route) => {
+          try {
+            const ml = await routeRiskML.analyzeRouteRisk({
+              route,
+              origin,
+              destination,
+              vehicleType: vehicleType || 'Truck'
+            });
+            if (!ml || !ml.success) return null;
+            return {
+              risk: ml.overall.level,
+              score: ml.overall.score,
+              overall: ml.overall,
+              factors: ml.factors,
+              segments: ml.segments,
+              recommendation: ml.overall.recommendation,
+              confidence: Number((ml.overall.confidencePct / 100).toFixed(2)),
+              confidencePct: ml.overall.confidencePct,
+              keyFactors: ml.overall.keyFactors,
+              scoringVersion: 'ml-route-risk-v2'
+            };
+          } catch (e) {
+            console.warn('[Route Risk] Individual route ML scoring failed:', e.message);
+            return null;
+          }
+        })
       );
 
       enrichedRoutes = routes.map((route, index) => ({

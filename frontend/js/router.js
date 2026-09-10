@@ -11,6 +11,9 @@ export function go(page) {
   }
   state.page = page;
   state.menu = false;
+  if (page === 'Alerts' && (!state.top10Alerts || state.top10Alerts.length === 0)) {
+    state.loadingAlerts = true;
+  }
   window.render();
 
   // Trigger page-specific data loading

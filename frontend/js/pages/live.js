@@ -11,8 +11,8 @@ function esc(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
 }
 
-const RISK_COLORS = { LOW: 'var(--green)', MEDIUM: 'var(--orange)', HIGH: 'var(--red)' };
-const RISK_BG = { LOW: '#34d39912', MEDIUM: '#fb923c12', HIGH: '#ef444412' };
+const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', MEDIUM: '#f59e0b', HIGH: '#f97316', 'VERY HIGH': '#ef4444' };
+const RISK_BG = { LOW: '#10b98115', MODERATE: '#f59e0b15', MEDIUM: '#f59e0b15', HIGH: '#f9731615', 'VERY HIGH': '#ef444415' };
 
 export function renderLivePage() {
   if (!state.selectedRoute) {
@@ -85,23 +85,77 @@ export function renderLivePage() {
           ${r.durationInTraffic ? `<div><small>${t('live.trafficEta')}</small><strong style="display:block;margin-top:5px">${esc(r.durationInTraffic)}</strong></div>` : ''}
         </div>
 
-        <!-- Risk Panel -->
-        <div style="margin-top:20px;padding:16px;border-radius:10px;background:${riskBg};border:1px solid ${riskColor}44">
+        <!-- Unified ML Route Risk Intelligence Panel -->
+        <div style="margin-top:20px;padding:16px;border-radius:10px;background:#090e17;border:1px solid #1e293b">
           ${state.loadingRisk
             ? `<div style="color:var(--muted)">${t('live.loadingRisk')}</div>`
             : risk
-            ? `<div class="eyebrow">${t('live.routeRisk')}</div>
-               <div style="font-size:22px;font-weight:bold;color:${riskColor};margin:8px 0">${Number(risk.score || 0).toFixed(1)}/100 ROUTE RISK</div>
-               <p style="font-size:12px;color:#94a3b8;line-height:1.6">
-                 ${esc(risk.recommendation || risk.reason || 'Route risk assessment available.')}
-               </p>
-               ${Array.isArray(risk.reasons) && risk.reasons.length
-                 ? `<div style="margin-top:8px">${risk.reasons.slice(0, 3).map(reason => `<div style="font-size:11px;color:#cbd5e1;margin-top:4px">• ${esc(reason)}</div>`).join('')}</div>`
-                 : ''}
-               <div style="font-size:10px;color:var(--muted);margin-top:8px">
-                 ${risk.scoringVersion ? `◉ ${esc(risk.scoringVersion)}` : risk.source === 'ml-model' ? '◉ ML model prediction' : '⚡ Rule-based assessment'}
-                 ${risk.note ? ' (ML service offline)' : ''}
-               </div>`
+            ? `
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="color:#5eead4;font-size:14px">⚡</span>
+                  <span style="font-size:11px;font-weight:700;letter-spacing:0.8px;color:#cbd5e1">ROUTE RISK INTELLIGENCE</span>
+                  <span class="risk-badge-proto">PROTOTYPE — ESTIMATED RISK</span>
+                </div>
+                <div class="risk-overall-chip" style="background:${riskColor}20;border:1px solid ${riskColor}60;color:${riskColor}">
+                  <span class="risk-chip-dot" style="background:${riskColor}"></span>
+                  <span>${esc(risk.risk || 'MODERATE')}</span>
+                  <span style="font-weight:700;margin-left:4px">${Math.round(risk.score || 0)}%</span>
+                </div>
+              </div>
+
+              ${risk.factors ? `
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+                  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span>🌧️ Rain</span>
+                      <b style="color:${risk.factors.rain.level === 'HIGH' || risk.factors.rain.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}">${risk.factors.rain.score}%</b>
+                    </div>
+                    <div class="risk-bar-track" style="margin:4px 0"><div class="risk-bar-fill" style="width:${risk.factors.rain.score}%;background:${risk.factors.rain.level === 'HIGH' || risk.factors.rain.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}"></div></div>
+                    <div style="font-size:9px;color:#94a3b8">${esc(risk.factors.rain.level)}</div>
+                  </div>
+                  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span>🏔️ Landslide</span>
+                      <b style="color:${risk.factors.landslide.level === 'HIGH' || risk.factors.landslide.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}">${risk.factors.landslide.score}%</b>
+                    </div>
+                    <div class="risk-bar-track" style="margin:4px 0"><div class="risk-bar-fill" style="width:${risk.factors.landslide.score}%;background:${risk.factors.landslide.level === 'HIGH' || risk.factors.landslide.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}"></div></div>
+                    <div style="font-size:9px;color:#94a3b8">${esc(risk.factors.landslide.level)}</div>
+                  </div>
+                  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span>🌊 Flood</span>
+                      <b style="color:${risk.factors.flood.level === 'HIGH' || risk.factors.flood.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}">${risk.factors.flood.score}%</b>
+                    </div>
+                    <div class="risk-bar-track" style="margin:4px 0"><div class="risk-bar-fill" style="width:${risk.factors.flood.score}%;background:${risk.factors.flood.level === 'HIGH' || risk.factors.flood.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}"></div></div>
+                    <div style="font-size:9px;color:#94a3b8">${esc(risk.factors.flood.level)}</div>
+                  </div>
+                  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span>🚗 Traffic</span>
+                      <b style="color:${risk.factors.traffic.level === 'HIGH' || risk.factors.traffic.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}">${risk.factors.traffic.score}%</b>
+                    </div>
+                    <div class="risk-bar-track" style="margin:4px 0"><div class="risk-bar-fill" style="width:${risk.factors.traffic.score}%;background:${risk.factors.traffic.level === 'HIGH' || risk.factors.traffic.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}"></div></div>
+                    <div style="font-size:9px;color:#94a3b8">${esc(risk.factors.traffic.level)}</div>
+                  </div>
+                </div>
+              ` : ''}
+
+              <div style="background:#0c1424;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;font-size:11px;color:#cbd5e1;line-height:1.4">
+                <b>Safety Advisory:</b> ${esc(risk.recommendation || 'Drive with standard highway precautions.')}
+              </div>
+
+              ${risk.keyFactors && risk.keyFactors.length ? `
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">
+                  ${risk.keyFactors.map(kf => `<span class="risk-factor-tag">${esc(kf)}</span>`).join('')}
+                </div>
+              ` : ''}
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:10px;color:#64748b">
+                <span>Open-Meteo Weather · IMD Climatology · GSI Zonation</span>
+                ${risk.confidencePct ? `<span>Confidence: <b style="color:var(--teal)">${risk.confidencePct}%</b></span>` : ''}
+              </div>
+            `
             : `<div style="color:var(--muted)">Risk assessment unavailable.</div>`
           }
         </div>
