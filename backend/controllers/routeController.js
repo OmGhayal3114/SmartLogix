@@ -52,15 +52,27 @@ exports.calculateRoutes = async (req, res, next) => {
         risk: risks[index] || null
       }));
 
-      // If primary route has HIGH or VERY HIGH risk (score >= 50%),
+      // If primary route has HIGH risk (score >= 45% or critical hazard factor is HIGH),
       // proactively calculate and suggest an alternate lower-risk route
       const primaryRoute = enrichedRoutes[0];
       const primaryRiskScore = primaryRoute?.risk?.score || 0;
       const primaryRiskLevel = primaryRoute?.risk?.risk || 'LOW';
-      const isPrimaryHighRisk = primaryRiskLevel === 'HIGH' || primaryRiskLevel === 'VERY HIGH' || primaryRiskScore >= 50;
+      const hasHighHazard = primaryRoute?.risk?.factors && (
+        primaryRoute.risk.factors.landslide?.level === 'HIGH' ||
+        primaryRoute.risk.factors.landslide?.level === 'VERY HIGH' ||
+        primaryRoute.risk.factors.rain?.level === 'HIGH' ||
+        primaryRoute.risk.factors.rain?.level === 'VERY HIGH' ||
+        primaryRoute.risk.factors.flood?.level === 'HIGH' ||
+        primaryRoute.risk.factors.flood?.level === 'VERY HIGH'
+      );
+
+      const isPrimaryHighRisk = primaryRiskLevel === 'HIGH' ||
+                                primaryRiskLevel === 'VERY HIGH' ||
+                                primaryRiskScore >= 45 ||
+                                Boolean(hasHighHazard);
 
       if (isPrimaryHighRisk && primaryRoute?.origin && primaryRoute?.destination) {
-        const hasSafeExistingRoute = enrichedRoutes.slice(1).some(r => r.risk && r.risk.score < 50);
+        const hasSafeExistingRoute = enrichedRoutes.slice(1).some(r => r.risk && r.risk.score < 45);
 
         if (!hasSafeExistingRoute) {
           try {
@@ -115,7 +127,15 @@ exports.calculateRoutes = async (req, res, next) => {
     const primaryRiskScore = enrichedRoutes[0]?.risk?.score || 0;
     const isPrimaryHighRisk = enrichedRoutes[0]?.risk?.risk === 'HIGH' ||
                               enrichedRoutes[0]?.risk?.risk === 'VERY HIGH' ||
-                              primaryRiskScore >= 50;
+                              primaryRiskScore >= 45 ||
+                              Boolean(enrichedRoutes[0]?.risk?.factors && (
+                                enrichedRoutes[0].risk.factors.landslide?.level === 'HIGH' ||
+                                enrichedRoutes[0].risk.factors.landslide?.level === 'VERY HIGH' ||
+                                enrichedRoutes[0].risk.factors.rain?.level === 'HIGH' ||
+                                enrichedRoutes[0].risk.factors.rain?.level === 'VERY HIGH' ||
+                                enrichedRoutes[0].risk.factors.flood?.level === 'HIGH' ||
+                                enrichedRoutes[0].risk.factors.flood?.level === 'VERY HIGH'
+                              ));
 
     return res.json({
       routes: enrichedRoutes,

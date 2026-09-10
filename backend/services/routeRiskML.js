@@ -129,12 +129,18 @@ async function analyzeRouteRisk({ route, origin, destination, vehicleType = 'Tru
   // Vehicle exposure multiplier
   const vehicleMultipliers = {
     'Truck': 1.0,
+    'Medium Truck': 1.0,
     'Heavy Truck': 1.15,
+    'Tanker Truck': 1.25,
     'Tanker': 1.25,
     'Refrigerated Truck': 1.10,
-    'Mini Truck': 0.90,
-    'Pickup': 0.85,
-    'Cargo Van': 0.85
+    'Mini Truck': 0.95,
+    'Pickup Truck': 0.95,
+    'Pickup': 0.95,
+    'Light Commercial Vehicle': 0.95,
+    'Container Truck': 1.15,
+    'Multi-Axle Truck': 1.20,
+    'Cargo Van': 0.90
   };
   const vFactor = vehicleMultipliers[vehicleType] || 1.0;
 
