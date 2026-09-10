@@ -45,6 +45,7 @@ export const api = {
 
   // ML
   getRouteRisk: (body) => request('POST', '/ml/route-risk', body),
+  analyzeRouteRisk: (body) => request('POST', '/ml/route-risk-analysis', body),
 
   // Feedback
   submitFeedback: (body, token) => request('POST', '/feedback', body, token || undefined),

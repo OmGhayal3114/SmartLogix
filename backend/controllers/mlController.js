@@ -73,3 +73,33 @@ exports.predictRouteRisk = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.analyzeRouteRisk = async (req, res, next) => {
+  try {
+    const { route, origin, destination, vehicleType, departureTime } = req.body;
+    if (!route || (!route.geometry && !route.coordinates)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Route object with geometry coordinates is required.'
+      });
+    }
+
+    const { analyzeRouteRisk } = require('../services/routeRiskML');
+    const result = await analyzeRouteRisk({
+      route,
+      origin: origin || route.startAddress || 'Origin',
+      destination: destination || route.endAddress || 'Destination',
+      vehicleType: vehicleType || 'Truck',
+      departureTime: departureTime || new Date()
+    });
+
+    return res.json(result);
+  } catch (err) {
+    console.error('[ML Controller] analyzeRouteRisk error:', err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Route risk analysis failed.'
+    });
+  }
+};
+

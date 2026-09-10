@@ -11,6 +11,7 @@ let userMarker = null;
 let userAccuracyCircle = null;
 let facilityMarkersGroup = null;
 let alertMarkersGroup = null;
+let riskZonesLayerGroup = null;
 let locationWatchId = null;
 
 function escapeHtml(value) {
@@ -157,6 +158,7 @@ export async function initMap(containerId = 'osm-map') {
   // Initialize marker groups
   facilityMarkersGroup = L.layerGroup().addTo(map);
   alertMarkersGroup = L.layerGroup().addTo(map);
+  riskZonesLayerGroup = L.layerGroup().addTo(map);
 
   // Floating "Center on My Location" control button
   const floatingCtrl = document.createElement('div');
@@ -247,6 +249,9 @@ export function displayRoute(route) {
   if (mainRouteLayer) {
     map.removeLayer(mainRouteLayer);
     mainRouteLayer = null;
+  }
+  if (riskZonesLayerGroup) {
+    riskZonesLayerGroup.clearLayers();
   }
   if (originMarker) {
     map.removeLayer(originMarker);
@@ -911,3 +916,87 @@ export async function reverseGeocodeOSM(lat, lng) {
     return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   }
 }
+
+/**
+ * Displays colored risk zone polylines along the route on the OpenStreetMap map.
+ * Green = Low, Amber = Moderate, Orange = High, Red = Very High.
+ */
+export function displayRiskZoneOverlay(segments) {
+  if (!map) return;
+  if (!riskZonesLayerGroup) {
+    riskZonesLayerGroup = L.layerGroup().addTo(map);
+  }
+  riskZonesLayerGroup.clearLayers();
+
+  if (!segments || !Array.isArray(segments) || segments.length === 0) return;
+
+  state.activeRiskSegments = segments;
+
+  segments.forEach((seg, idx) => {
+    if (!seg.coordinates || seg.coordinates.length < 2) return;
+
+    // GeoJSON coordinates are [lng, lat] -> convert to Leaflet [lat, lng]
+    const latLngs = seg.coordinates.map(c => [c[1], c[0]]);
+
+    const polyline = L.polyline(latLngs, {
+      color: seg.color || '#10b981',
+      weight: 9,
+      opacity: 0.88,
+      lineCap: 'round',
+      lineJoin: 'round'
+    });
+
+    const popupContent = `
+      <div style="font-family:Inter,sans-serif;padding:6px;max-width:260px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;border-bottom:1px solid #334155;padding-bottom:4px">
+          <b style="color:${seg.color};font-size:12px">Segment ${idx + 1}: ${escapeHtml(seg.name)}</b>
+          <span style="background:${seg.color}25;color:${seg.color};border:1px solid ${seg.color}60;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px">
+            ${seg.riskLevel} (${seg.riskScore}%)
+          </span>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:#f8fafc;font-weight:600">
+          ${escapeHtml(seg.primaryHazardType)} Risk
+        </div>
+        <div style="margin-top:2px;font-size:11px;color:#cbd5e1;line-height:1.35">
+          ${escapeHtml(seg.explanation)}
+        </div>
+        <div style="margin-top:6px;padding-top:4px;border-top:1px solid #1e293b;font-size:10px;color:#94a3b8">
+          <div>🌧️ Precip: <b style="color:#f8fafc">${seg.currentConditions?.forecast_24h_mm || 0}mm (${seg.currentConditions?.precipitation_probability || 0}%)</b></div>
+          <div>🏔️ Terrain: <b style="color:#f8fafc">${escapeHtml(seg.terrain || 'N/A')}</b></div>
+          <div>📍 State: <b style="color:#f8fafc">${escapeHtml(seg.state || 'NER')}</b></div>
+          <div style="margin-top:4px;color:#64748b;font-size:9px">Source: ${escapeHtml(seg.currentConditions?.weatherDataSource || 'Open-Meteo')}</div>
+        </div>
+      </div>
+    `;
+
+    polyline.bindPopup(popupContent);
+    riskZonesLayerGroup.addLayer(polyline);
+  });
+}
+window.displayRiskZoneOverlay = displayRiskZoneOverlay;
+
+/**
+ * Focuses map camera on a specific risk segment.
+ */
+export function focusOnSegment(seg) {
+  if (!map || !seg) return;
+  if (seg.coordinates && seg.coordinates.length >= 2) {
+    const latLngs = seg.coordinates.map(c => [c[1], c[0]]);
+    const bounds = L.latLngBounds(latLngs);
+    map.fitBounds(bounds, { padding: [50, 50] });
+
+    if (seg.midCoord) {
+      L.popup()
+        .setLatLng([seg.midCoord.lat, seg.midCoord.lng])
+        .setContent(`
+          <div style="font-family:Inter,sans-serif;padding:6px;max-width:240px">
+            <b style="color:${seg.color};font-size:12px">${escapeHtml(seg.name)}: ${seg.riskLevel} (${seg.riskScore}%)</b>
+            <div style="font-size:11px;color:#cbd5e1;margin-top:4px">${escapeHtml(seg.explanation)}</div>
+          </div>
+        `)
+        .openOn(map);
+    }
+  }
+}
+window.focusOnSegment = focusOnSegment;
+

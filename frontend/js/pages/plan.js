@@ -3,6 +3,7 @@
 import { state } from '../state.js';
 import { api } from '../api.js';
 import { t } from '../i18n.js';
+import { renderRiskPanel, renderRiskPanelLoading, renderRiskPanelError } from '../riskPanel.js';
 
 const VEHICLES = [
   'Mini Truck',
@@ -38,7 +39,7 @@ export function renderPlanPage() {
 
         <div class="field">
           <label>${t('plan.vehicle')}</label>
-          <select id="vehicle-select" onchange="state.vehicleType=this.value">
+          <select id="vehicle-select" onchange="state.vehicleType=this.value; window._routeRiskCache={}; state.activeRiskSegments=null;">
             <option value="" ${!state.vehicleType ? 'selected' : ''} disabled>${t('plan.selectVehicle')}</option>
             ${VEHICLES.map(v => `<option value="${v}" ${v === state.vehicleType ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
@@ -50,7 +51,7 @@ export function renderPlanPage() {
           <div style="display:flex;gap:8px;align-items:stretch">
             <input type="text" id="origin-input" value="${esc(state.origin)}"
               placeholder="${t('plan.enterOrigin')}"
-              oninput="state.origin=this.value"
+              oninput="state.origin=this.value; window._routeRiskCache={}; state.activeRiskSegments=null;"
               style="flex:1">
             <button class="btn" title="${t('plan.yourLocation')}"
               style="padding:8px 10px;white-space:nowrap;flex-shrink:0"
@@ -68,7 +69,7 @@ export function renderPlanPage() {
           <label>${t('plan.destination')}</label>
           <input type="text" id="dest-input" value="${esc(state.destination)}"
             placeholder="${t('plan.enterDest')}"
-            oninput="state.destination=this.value">
+            oninput="state.destination=this.value; window._routeRiskCache={}; state.activeRiskSegments=null;">
         </div>
 
         <button class="btn primary" style="width:100%" onclick="calculateRoutes()" ${state.loadingRoutes ? 'disabled' : ''}>
@@ -97,12 +98,18 @@ export function renderPlanPage() {
 }
 
 function routeCard(r, i) {
+  const cachedRisk = window._routeRiskCache && window._routeRiskCache[i];
   return `
   <div class="route">
     <div class="row">
       <div>
         <b>${esc(r.summary)}</b>
         ${i === 0 ? `<span class="badge info" style="margin-left:8px">${t('plan.recommended')}</span>` : ''}
+        ${cachedRisk?.overall ? `
+          <span class="risk-overall-chip" style="display:inline-flex;margin-left:8px;padding:2px 8px;font-size:10px;background:${cachedRisk.overall.color}20;border:1px solid ${cachedRisk.overall.color}60;color:${cachedRisk.overall.color}">
+            ${cachedRisk.overall.level} · ${cachedRisk.overall.score}% Risk
+          </span>
+        ` : ''}
         <div class="muted" style="margin-top:8px">${esc(r.startAddress || '')} → ${esc(r.endAddress || '')}</div>
       </div>
       <button class="btn ${i === 0 ? 'primary' : ''}" onclick="selectRoute(${i})">
@@ -116,20 +123,28 @@ function routeCard(r, i) {
       <div><small>Vehicle</small><strong>${esc(r.vehicleType)}</strong></div>
     </div>
 
-    ${r.risk ? `
-      <div style="margin-top:12px;padding:12px;border-radius:9px;background:#ffffff06;border:1px solid #ffffff12">
-        <div class="row">
-          <div>
-            <small>Route risk</small>
-            <strong style="display:block;margin-top:4px;color:${r.risk.risk === 'HIGH' ? 'var(--red)' : r.risk.risk === 'MEDIUM' ? 'var(--orange)' : 'var(--green)'}">
-              ${esc(r.risk.risk)} · ${Number(r.risk.score || 0).toFixed(1)}/100
-            </strong>
+    <!-- Route Risk Intelligence Panel -->
+    <div id="risk-panel-container-${i}">
+      ${cachedRisk
+        ? renderRiskPanel(cachedRisk, i)
+        : state.loadingRouteRisk
+        ? renderRiskPanelLoading()
+        : (r.risk ? `
+          <div style="margin-top:12px;padding:12px;border-radius:9px;background:#ffffff06;border:1px solid #ffffff12">
+            <div class="row">
+              <div>
+                <small>Route risk</small>
+                <strong style="display:block;margin-top:4px;color:${r.risk.risk === 'HIGH' ? 'var(--red)' : r.risk.risk === 'MEDIUM' ? 'var(--orange)' : 'var(--green)'}">
+                  ${esc(r.risk.risk)} · ${Number(r.risk.score || 0).toFixed(1)}/100
+                </strong>
+              </div>
+              <span class="badge">${Number(r.risk.metrics?.matchedHazards || 0)} hazards</span>
+            </div>
+            ${r.risk.recommendation ? `<div class="muted" style="margin-top:7px;font-size:11px">${esc(r.risk.recommendation)}</div>` : ''}
           </div>
-          <span class="badge">${Number(r.risk.metrics?.matchedHazards || 0)} hazards</span>
-        </div>
-        ${r.risk.recommendation ? `<div class="muted" style="margin-top:7px;font-size:11px">${esc(r.risk.recommendation)}</div>` : ''}
-      </div>
-    ` : ''}
+        ` : '')
+      }
+    </div>
 
     ${r.warnings && r.warnings.length > 0 ? `<div class="muted" style="margin-top:8px">⚠ ${esc(r.warnings.join(' '))}</div>` : ''}
   </div>`;
@@ -178,6 +193,43 @@ window.useMyLocation = async () => {
   );
 };
 
+async function fetchRiskAnalysisForAllRoutes() {
+  if (!state.routes || state.routes.length === 0) {
+    state.loadingRouteRisk = false;
+    return;
+  }
+
+  const promises = state.routes.map(async (r, i) => {
+    try {
+      const riskData = await api.analyzeRouteRisk({
+        route: r,
+        origin: state.origin,
+        destination: state.destination,
+        vehicleType: state.vehicleType
+      });
+      if (!window._routeRiskCache) window._routeRiskCache = {};
+      window._routeRiskCache[i] = riskData;
+
+      const container = document.getElementById(`risk-panel-container-${i}`);
+      if (container) {
+        container.innerHTML = renderRiskPanel(riskData, i);
+      }
+    } catch (err) {
+      console.warn(`[ML Risk] Route ${i} analysis failed:`, err.message);
+      const container = document.getElementById(`risk-panel-container-${i}`);
+      if (container) {
+        container.innerHTML = renderRiskPanelError('Route risk analysis temporarily unavailable.');
+      }
+    }
+  });
+
+  await Promise.allSettled(promises);
+  state.loadingRouteRisk = false;
+  if (window.render && state.page === 'Plan Trip') {
+    window.render();
+  }
+}
+
 window.calculateRoutes = async () => {
   const { notify } = await import('../render.js');
   if (!state.vehicleType) {
@@ -196,6 +248,9 @@ window.calculateRoutes = async () => {
   state.loadingRoutes = true;
   state.routeReady = false;
   state.routes = [];
+  window._routeRiskCache = {};
+  state.activeRiskSegments = null;
+  state.loadingRouteRisk = false;
   window.render();
 
   try {
@@ -207,9 +262,13 @@ window.calculateRoutes = async () => {
     state.routes = data.routes || [];
     state.routeReady = true;
     state.loadingRoutes = false;
+    state.loadingRouteRisk = true;
     window.render();
+
+    fetchRiskAnalysisForAllRoutes();
   } catch (err) {
     state.loadingRoutes = false;
+    state.loadingRouteRisk = false;
     state.routeReady = true;
     notify(err.message || t('plan.routeError'), 'error');
     window.render();
@@ -223,6 +282,14 @@ window.selectRoute = async (index) => {
   state.selectedRoute = route;
   state.selectedFacility = null;
   state._originalMainRoute = route;
+
+  // Pass analyzed risk segments to state for map visualization
+  if (window._routeRiskCache && window._routeRiskCache[index]?.segments) {
+    state.activeRiskSegments = window._routeRiskCache[index].segments;
+  } else {
+    state.activeRiskSegments = null;
+  }
+
   notify(`Route selected: ${route.summary}`, 'success');
   const { go } = await import('../router.js');
   go('Live Network');
@@ -236,9 +303,13 @@ export async function initPlanPage() {
       attachOSMAutocomplete('origin-input', (label, lat, lng) => {
         state.origin = label;
         state.userLocation = { lat, lng };
+        window._routeRiskCache = {};
+        state.activeRiskSegments = null;
       });
       attachOSMAutocomplete('dest-input', (label) => {
         state.destination = label;
+        window._routeRiskCache = {};
+        state.activeRiskSegments = null;
       });
     } catch (e) {
       console.warn('[Plan] Autocomplete init:', e.message);

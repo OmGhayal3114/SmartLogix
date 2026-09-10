@@ -983,4 +983,283 @@ b { font-weight: 600; }
   text-overflow: ellipsis;
 }
 
+/* ==================================================
+   ROUTE RISK INTELLIGENCE PANEL STYLES
+   ================================================== */
+.risk-panel-container {
+  background: #090e17;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.risk-panel-loading {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.risk-panel-spinner {
+  width: 26px;
+  height: 26px;
+  margin: 0 auto 10px auto;
+  border: 3px solid rgba(20, 184, 166, 0.2);
+  border-top-color: #14b8a6;
+  border-radius: 50%;
+  animation: riskSpin 0.8s linear infinite;
+}
+
+@keyframes riskSpin {
+  to { transform: rotate(360deg); }
+}
+
+.risk-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.risk-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.risk-title-icon {
+  font-size: 14px;
+  color: #5eead4;
+}
+
+.risk-title-text {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #cbd5e1;
+}
+
+.risk-badge-proto {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+}
+
+.risk-overall-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+
+.risk-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.risk-factors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.risk-factor-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.risk-factor-card:hover {
+  transform: translateY(-2px);
+  border-color: #334155;
+}
+
+.risk-factor-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.risk-factor-icon {
+  font-size: 14px;
+}
+
+.risk-factor-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2e8f0;
+  flex: 1;
+  margin-left: 6px;
+}
+
+.risk-factor-score {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.risk-bar-track {
+  height: 5px;
+  background: #1e293b;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.risk-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.risk-factor-level {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+
+.risk-factor-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.risk-segment-strip-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #1e293b;
+}
+
+.risk-strip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.risk-map-view-btn {
+  background: #134e4a33;
+  border: 1px solid #14b8a666;
+  color: #5eead4;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.risk-map-view-btn:hover {
+  background: #14b8a6;
+  color: #040a12;
+}
+
+.risk-segment-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.risk-segment-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 0;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.risk-segment-bar:hover {
+  background: #1e293b55;
+}
+
+.risk-seg-line {
+  height: 5px;
+  width: 100%;
+  border-radius: 3px;
+}
+
+.risk-seg-node {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.risk-seg-label {
+  font-size: 9px;
+  color: #94a3b8;
+  margin-top: 3px;
+  text-align: center;
+}
+
+.risk-strip-terminal {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  padding: 0 4px;
+}
+
+.risk-safety-summary {
+  margin-top: 14px;
+  background: #0c1424;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.risk-factor-tag {
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #334155;
+}
+
+.risk-panel-footer {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: #64748b;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+
 
