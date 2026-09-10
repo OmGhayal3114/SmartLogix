@@ -294,177 +294,208 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
 
 /**
  * Searches facilities along the route corridor using Overpass API.
+ * Uses a route bounding box query — one efficient request covering all facility types.
+ *
  * @param {string} origin - Origin place name
  * @param {string} destination - Destination place name
  * @param {string[]} types - Facility type filters
- * @param {Array} routeCoords - GeoJSON [lng,lat] coordinate array from OSRM geometry
+ * @param {Array} routeCoords - GeoJSON [lng,lat] coordinate array from OSRM geometry (up to 20 thinned points)
  */
 async function getFacilitiesAlongRoute(origin, destination, types = ['hospital', 'lodging', 'gas_station', 'car_repair', 'parking', 'restaurant'], routeCoords = []) {
-  const cacheKey = `${origin}->${destination}->${types.sort().join(',')}`;
+  const cacheKey = `${origin}->${destination}->${[...types].sort().join(',')}`;
   if (cache.facilities.has(cacheKey)) {
     return cache.facilities.get(cacheKey);
   }
 
   const [originPoint, destinationPoint] = await Promise.all([geocode(origin), geocode(destination)]);
 
-  // Build corridor sample points from actual route geometry if provided,
-  // otherwise fall back to straight-line interpolation.
-  let centers;
-  if (routeCoords && routeCoords.length >= 2) {
-    // Sample up to 8 evenly-spaced points along the real road geometry
-    const step = Math.max(1, Math.floor(routeCoords.length / 7));
-    const sampled = [];
-    for (let i = 0; i < routeCoords.length; i += step) {
-      sampled.push([routeCoords[i][1], routeCoords[i][0]]); // convert [lng,lat] → [lat,lng]
-    }
-    // Always include the last point
-    const last = routeCoords[routeCoords.length - 1];
-    sampled.push([last[1], last[0]]);
-    centers = sampled;
+  // --- Compute bounding box from route geometry or fallback to O/D points ---
+  let minLat, maxLat, minLng, maxLng;
+  const allCoords = routeCoords && routeCoords.length >= 2 ? routeCoords : [];
+
+  if (allCoords.length >= 2) {
+    minLat = Math.min(...allCoords.map(c => c[1]));
+    maxLat = Math.max(...allCoords.map(c => c[1]));
+    minLng = Math.min(...allCoords.map(c => c[0]));
+    maxLng = Math.max(...allCoords.map(c => c[0]));
   } else {
-    // Fallback: 5 straight-line interpolation points
-    centers = [0, 0.25, 0.5, 0.75, 1].map(t => [
-      originPoint.lat + (destinationPoint.lat - originPoint.lat) * t,
-      originPoint.lng + (destinationPoint.lng - originPoint.lng) * t
-    ]);
+    minLat = Math.min(originPoint.lat, destinationPoint.lat);
+    maxLat = Math.max(originPoint.lat, destinationPoint.lat);
+    minLng = Math.min(originPoint.lng, destinationPoint.lng);
+    maxLng = Math.max(originPoint.lng, destinationPoint.lng);
   }
 
+  // Expand bbox by ~15 km on each side (0.14 degrees ≈ 15 km)
+  const PAD = 0.14;
+  const bbox = `${(minLat - PAD).toFixed(5)},${(minLng - PAD).toFixed(5)},${(maxLat + PAD).toFixed(5)},${(maxLng + PAD).toFixed(5)}`;
+
+  // Keep a reference centroid list for distance computation (route sample points or O/D)
+  const refPoints = allCoords.length >= 2
+    ? allCoords.map(c => [c[1], c[0]])
+    : [[originPoint.lat, originPoint.lng], [destinationPoint.lat, destinationPoint.lng]];
+
   const wanted = new Set(types);
+
+  // Build ONE bounding-box Overpass query with all facility types
   const clauses = [];
-  if (wanted.has('hospital')) clauses.push('nwr["amenity"="hospital"]');
-  if (wanted.has('lodging')) clauses.push('nwr["tourism"~"hotel|motel|guest_house"]');
+  if (wanted.has('hospital'))    clauses.push('nwr["amenity"="hospital"]');
+  if (wanted.has('lodging'))     clauses.push('nwr["tourism"~"hotel|motel|guest_house"]');
   if (wanted.has('gas_station')) clauses.push('nwr["amenity"="fuel"]');
-  if (wanted.has('car_repair')) clauses.push('nwr["shop"="car_repair"]', 'nwr["craft"="car_repair"]');
-  if (wanted.has('parking')) clauses.push('nwr["amenity"="parking"]');
-  if (wanted.has('restaurant')) clauses.push('nwr["amenity"~"restaurant|fast_food|cafe"]');
-  if (wanted.has('restroom')) clauses.push('nwr["amenity"="toilets"]');
+  if (wanted.has('car_repair'))  clauses.push('nwr["shop"="car_repair"]', 'nwr["craft"="car_repair"]');
+  if (wanted.has('parking'))     clauses.push('nwr["amenity"="parking"]');
+  if (wanted.has('restaurant'))  clauses.push('nwr["amenity"~"restaurant|fast_food|cafe"]');
+  if (wanted.has('restroom'))    clauses.push('nwr["amenity"="toilets"]');
 
   if (!clauses.length) return [];
 
-  const query = `[out:json][timeout:20];(${centers.flatMap(([lat, lng]) => clauses.map(clause => `${clause}(around:20000,${lat},${lng});`)).join('')});out center tags;`;
+  // Single compact bbox query — much faster than 140 radius sub-queries
+  const query = `[out:json][timeout:25];(${clauses.map(c => `${c}(${bbox});`).join('')});out center tags;`;
+
+  const defaultNames = {
+    hospital:    'Hospital / Health Center',
+    gas_station: 'Petrol Pump',
+    lodging:     'Hotel / Lodge',
+    car_repair:  'Auto Repair / Garage',
+    parking:     'Parking Facility',
+    restaurant:  'Restaurant / Dhaba',
+    restroom:    'Public Restroom'
+  };
+
+  function classifyElement(tags) {
+    if (tags.amenity === 'hospital') return 'hospital';
+    if (tags.amenity === 'fuel') return 'gas_station';
+    if (tags.shop === 'car_repair' || tags.craft === 'car_repair') return 'car_repair';
+    if (tags.amenity === 'parking') return 'parking';
+    if (['restaurant', 'fast_food', 'cafe'].includes(tags.amenity)) return 'restaurant';
+    if (tags.amenity === 'toilets') return 'restroom';
+    if (tags.tourism) return 'lodging';
+    return 'lodging';
+  }
+
+  function minDistToRoute(lat, lng) {
+    let min = Infinity;
+    for (const [rLat, rLng] of refPoints) {
+      const d = distanceMeters(lat, lng, rLat, rLng);
+      if (d < min) min = d;
+    }
+    return min;
+  }
 
   try {
     const response = await http.post(OVERPASS_URL, query, { headers: { 'Content-Type': 'text/plain' } });
+    const elements = response.data?.elements || [];
+
     const seen = new Set();
-    const facilities = (response.data?.elements || []).map(element => {
-      const point = elementPoint(element);
-      const tags = element.tags || {};
-      if (!point[0] || !point[1]) return null;
+    // Per-type count cap: max 8 per category to ensure balanced results
+    const typeCount = {};
+    const PER_TYPE_MAX = 8;
 
-      let facilityType = 'lodging';
-      if (tags.amenity === 'hospital') facilityType = 'hospital';
-      else if (tags.amenity === 'fuel') facilityType = 'gas_station';
-      else if (tags.shop === 'car_repair' || tags.craft === 'car_repair' || tags.amenity === 'vehicle_inspection') facilityType = 'car_repair';
-      else if (tags.amenity === 'parking') facilityType = 'parking';
-      else if (['restaurant', 'fast_food', 'cafe'].includes(tags.amenity)) facilityType = 'restaurant';
-      else if (tags.amenity === 'toilets') facilityType = 'restroom';
+    const facilities = [];
+    // Sort by type to distribute evenly before applying cap
+    const sorted = elements
+      .map(el => {
+        const point = elementPoint(el);
+        if (!point[0] || !point[1]) return null;
+        const tags = el.tags || {};
+        const facilityType = classifyElement(tags);
+        const dist = minDistToRoute(point[0], point[1]);
+        const address = [tags['addr:street'], tags['addr:city'] || tags['addr:district'], tags['addr:postcode']]
+          .filter(Boolean).join(', ');
+        return {
+          id: `${el.type}/${el.id}`,
+          placeId: `${el.type}/${el.id}`,
+          name: tags.name || tags.brand || tags.operator || defaultNames[facilityType],
+          brand: tags.brand || tags.operator || null,
+          facilityType,
+          address: address || 'Along Logistics Highway',
+          coordinates: { lat: point[0], lng: point[1] },
+          distanceMeters: dist,
+          openingHours: tags.opening_hours || null,
+          phone: tags.phone || tags['contact:phone'] || null,
+          website: tags.website || tags['contact:website'] || null,
+          source: 'OpenStreetMap'
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.distanceMeters - b.distanceMeters);
 
-      const defaultNames = {
-        hospital: 'Hospital / Health Center',
-        gas_station: 'Petrol Pump',
-        lodging: 'Hotel / Lodge',
-        car_repair: 'Auto Repair / Garage',
-        parking: 'Parking Facility',
-        restaurant: 'Restaurant / Dhaba',
-        restroom: 'Public Restroom'
-      };
-
-      // Compute minimum distance to corridor points
-      let minDistance = Infinity;
-      for (const [cLat, cLng] of centers) {
-        const d = distanceMeters(point[0], point[1], cLat, cLng);
-        if (d < minDistance) minDistance = d;
-      }
-
-      const address = [tags['addr:street'], tags['addr:city'] || tags['addr:district'], tags['addr:postcode']]
-        .filter(Boolean).join(', ');
-
-      return {
-        id: `${element.type}/${element.id}`,
-        placeId: `${element.type}/${element.id}`,
-        name: tags.name || tags.brand || tags.operator || defaultNames[facilityType],
-        brand: tags.brand || tags.operator || null,
-        facilityType,
-        address: address || 'Along Logistics Highway',
-        coordinates: { lat: point[0], lng: point[1] },
-        distanceMeters: minDistance,
-        openingHours: tags.opening_hours || null,
-        phone: tags.phone || tags['contact:phone'] || null,
-        website: tags.website || tags['contact:website'] || null,
-        source: 'OpenStreetMap'
-      };
-    }).filter(item => item && !seen.has(item.placeId) && seen.add(item.placeId));
+    for (const item of sorted) {
+      if (seen.has(item.placeId)) continue;
+      typeCount[item.facilityType] = (typeCount[item.facilityType] || 0);
+      if (typeCount[item.facilityType] >= PER_TYPE_MAX) continue;
+      seen.add(item.placeId);
+      typeCount[item.facilityType]++;
+      facilities.push(item);
+    }
 
     if (facilities.length > 0) {
+      // Sort final list by distance so closest facilities come first
       facilities.sort((a, b) => a.distanceMeters - b.distanceMeters);
-      const result = facilities.slice(0, 40);
-      cache.facilities.set(cacheKey, result);
-      return result;
+      cache.facilities.set(cacheKey, facilities);
+      return facilities;
     }
   } catch (err) {
-    console.warn('[Overpass] POI notice:', err.message);
+    console.warn('[Overpass] bbox query failed:', err.message);
   }
 
-  // Fast OSM Photon fallback along corridor
+  // --- Fallback: parallel Photon searches per facility type ---
   try {
     const midLat = (originPoint.lat + destinationPoint.lat) / 2;
     const midLng = (originPoint.lng + destinationPoint.lng) / 2;
-    const searchQueries = [
-      { q: 'fuel', type: 'gas_station', name: 'Petrol Pump' },
-      { q: 'hospital', type: 'hospital', name: 'Hospital' },
-      { q: 'hotel', type: 'lodging', name: 'Hotel / Lodge' },
-      { q: 'car repair', type: 'car_repair', name: 'Garage / Repair' }
-    ];
 
-    const fallbackResults = [];
+    const photonSearches = [
+      { q: 'hospital',   type: 'hospital',    name: 'Hospital' },
+      { q: 'fuel petrol',type: 'gas_station',  name: 'Petrol Pump' },
+      { q: 'hotel',      type: 'lodging',      name: 'Hotel / Lodge' },
+      { q: 'car repair', type: 'car_repair',   name: 'Garage / Repair' },
+      { q: 'restaurant', type: 'restaurant',   name: 'Restaurant / Dhaba' },
+      { q: 'parking',    type: 'parking',      name: 'Parking' }
+    ].filter(s => wanted.has(s.type));
+
     const seenFallback = new Set();
+    const fallbackResults = [];
 
-    for (const sq of searchQueries) {
-      if (!wanted.has(sq.type)) continue;
-      const resp = await http.get(PHOTON_URL, {
-        params: { q: sq.q, lat: midLat, lon: midLng, limit: 10, lang: 'en' }
-      });
-      (resp.data?.features || []).forEach(f => {
-        const coords = f.geometry?.coordinates || [];
-        const p = f.properties || {};
-        if (coords.length >= 2 && p.name) {
-          const lat = coords[1];
-          const lng = coords[0];
-          const id = `photon/${p.osm_id || Math.random().toString(36).slice(2)}`;
-          if (!seenFallback.has(id)) {
-            seenFallback.add(id);
-            const dist = distanceMeters(lat, lng, midLat, midLng);
-            // Only keep if within 40km of corridor
-            if (dist <= 40000) {
-              const address = [p.street, p.city || p.district, p.state].filter(Boolean).join(', ');
-              fallbackResults.push({
-                id,
-                placeId: id,
-                name: p.name || sq.name,
-                brand: null,
-                facilityType: sq.type,
-                address: address || 'Along Highway Corridor',
-                coordinates: { lat, lng },
-                distanceMeters: dist,
-                openingHours: null,
-                phone: null,
-                website: null,
-                source: 'OpenStreetMap'
-              });
+    await Promise.allSettled(photonSearches.map(async sq => {
+      try {
+        const resp = await http.get(PHOTON_URL, {
+          params: { q: sq.q, lat: midLat, lon: midLng, limit: 8, lang: 'en' }
+        });
+        (resp.data?.features || []).forEach(f => {
+          const coords = f.geometry?.coordinates || [];
+          const p = f.properties || {};
+          if (coords.length >= 2 && p.name) {
+            const lat = coords[1], lng = coords[0];
+            const id = `photon/${p.osm_id || Math.random().toString(36).slice(2)}`;
+            if (!seenFallback.has(id)) {
+              seenFallback.add(id);
+              const dist = minDistToRoute(lat, lng);
+              if (dist <= 50000) {
+                const address = [p.street, p.city || p.district, p.state].filter(Boolean).join(', ');
+                fallbackResults.push({
+                  id, placeId: id,
+                  name: p.name || sq.name,
+                  brand: null,
+                  facilityType: sq.type,
+                  address: address || 'Along Highway Corridor',
+                  coordinates: { lat, lng },
+                  distanceMeters: dist,
+                  openingHours: null, phone: null, website: null,
+                  source: 'OpenStreetMap'
+                });
+              }
             }
           }
-        }
-      });
-    }
+        });
+      } catch (_) {}
+    }));
 
     if (fallbackResults.length > 0) {
       fallbackResults.sort((a, b) => a.distanceMeters - b.distanceMeters);
-      const result = fallbackResults.slice(0, 30);
-      cache.facilities.set(cacheKey, result);
-      return result;
+      cache.facilities.set(cacheKey, fallbackResults);
+      return fallbackResults;
     }
   } catch (pErr) {
-    console.warn('[Photon Fallback] POI error:', pErr.message);
+    console.warn('[Photon Fallback] error:', pErr.message);
   }
 
   return [];
