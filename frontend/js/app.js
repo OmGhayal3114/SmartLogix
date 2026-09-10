@@ -29,12 +29,9 @@ function showOfflineBanner() {
   const banner = document.createElement('div');
   banner.id = 'offline-banner';
   banner.innerHTML = `
-    <div style="position:fixed;bottom:20px;left:20px;right:20px;max-width:850px;margin:0 auto;z-index:99999;background:rgba(26,10,10,0.96);backdrop-filter:blur(12px);border:1px solid #ef444488;border-radius:12px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:system-ui;font-size:13px;color:#fca5a5;box-shadow:0 12px 36px rgba(0,0,0,0.6)">
-      <span>⚠ &nbsp; <strong>Backend offline:</strong> ${isLocal ? 'Start it with: <code style="background:#0b0f1a;padding:2px 8px;border-radius:4px;color:#5eead4">cd backend &amp;&amp; npm start</code>' : 'Please verify cloud database connectivity.'}</span>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button onclick="location.reload()" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Retry</button>
-        <button onclick="document.getElementById('offline-banner').remove()" style="background:transparent;color:#fca5a5;border:1px solid #ef444466;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px">✕</button>
-      </div>
+    <div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#1a0a0a;border-bottom:2px solid #ef444466;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-family:system-ui;font-size:13px;color:#fca5a5">
+      <span>⚠ &nbsp; Backend server is connecting or not reachable. ${isLocal ? 'Start it with: <code style="background:#0b0f1a;padding:2px 8px;border-radius:4px;color:#5eead4">cd C:\\smartlogix\\backend &amp;&amp; node server.js</code>' : 'Please verify cloud database connectivity.'}</span>
+      <button onclick="location.reload()" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Retry</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -84,18 +81,16 @@ async function init() {
 
 init().catch(err => {
   console.error('[App] Init failed:', err);
-  const app = document.getElementById('app');
-  if (app) {
-    app.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;background:#060b18;color:#e8edf5;font-family:system-ui;padding:20px;text-align:center">
-        <div style="font-size:48px;color:#5eead4;margin-bottom:16px">◉</div>
-        <h2 style="color:#e8edf5">NER SmartLogix</h2>
-        <p style="color:#ef4444;margin-top:8px;font-size:13px;max-width:500px">${err.message || 'Initialization error'}</p>
-        <p style="color:#64748b;margin-top:12px;max-width:420px;line-height:1.6">
-          If running locally, ensure backend server is started:<br>
-          <code style="background:#0f1929;color:#5eead4;padding:6px 12px;border-radius:6px;display:inline-block;margin-top:8px;border:1px solid #1e3a5f40">cd backend && node server.js</code>
-        </p>
-        <button onclick="location.reload()" style="margin-top:20px;padding:12px 28px;background:#5eead4;color:#060b18;border:none;border-radius:10px;cursor:pointer;font-weight:bold;font-size:14px">↺ Retry</button>
-      </div>`;
-  }
+  document.getElementById('app').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;background:#0b0f1a;color:#e8edf5;font-family:system-ui;padding:20px;text-align:center">
+      <div style="font-size:48px;color:#5eead4;margin-bottom:20px">◉</div>
+      <h2 style="color:#e8edf5">NER SmartLogix</h2>
+      <p style="color:#64748b;margin-top:12px;max-width:420px;line-height:1.6">
+        The app could not start. This usually means the backend server is not running.<br><br>
+        Open a terminal and run:<br>
+        <code style="background:#111827;color:#5eead4;padding:8px 14px;border-radius:6px;display:inline-block;margin-top:8px">cd C:\\smartlogix\\backend</code><br>
+        <code style="background:#111827;color:#5eead4;padding:8px 14px;border-radius:6px;display:inline-block;margin-top:6px">node server.js</code>
+      </p>
+      <button onclick="location.reload()" style="margin-top:24px;padding:12px 28px;background:#5eead4;color:#0b0f1a;border:none;border-radius:8px;cursor:pointer;font-weight:bold;font-size:14px">↺ Retry</button>
+    </div>`;
 });

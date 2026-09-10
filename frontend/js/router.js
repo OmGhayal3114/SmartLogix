@@ -12,7 +12,6 @@ export function go(page) {
   state.page = page;
   state.menu = false;
   window.render();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 
   // Trigger page-specific data loading
   if (page === 'My Trip' && state.user) {
