@@ -12,11 +12,14 @@ exports.getFacilitiesNearRoute = async (req, res, next) => {
       return res.status(400).json({ error: 'Origin and destination are required.' });
     }
 
+    const originCoords = req.body?.originCoords || null;
+    const destinationCoords = req.body?.destinationCoords || null;
+    const userLocation = req.body?.userLocation || null;
+
     const ALL_CATEGORIES = [
       'hospital',
       'pharmacy',
       'police',
-      'atm',
       'gas_station',
       'lodging',
       'car_repair',
@@ -26,18 +29,20 @@ exports.getFacilitiesNearRoute = async (req, res, next) => {
     ];
 
     const facilityTypes = rawTypes
-      ? (Array.isArray(rawTypes) ? rawTypes : rawTypes.split(','))
+      ? (Array.isArray(rawTypes) ? rawTypes : rawTypes.split(',')).filter(t => t !== 'atm')
       : ALL_CATEGORIES;
 
     const facilities = await mapsService.getFacilitiesAlongRoute(
       origin,
       destination,
       facilityTypes,
-      routeCoords
+      routeCoords,
+      { originCoords, destinationCoords, userLocation }
     );
 
-    res.json({ facilities });
+    res.json({ facilities: facilities || [] });
   } catch (err) {
-    return res.status(502).json({ error: err.message || 'OpenStreetMap facility search is temporarily unavailable.' });
+    console.warn('[Facilities Controller] Error fetching facilities:', err.message);
+    return res.json({ facilities: [] });
   }
 };

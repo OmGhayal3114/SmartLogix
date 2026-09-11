@@ -497,18 +497,40 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
  * @param {Array} routeCoords - GeoJSON [lng,lat] coordinate array from OSRM geometry (up to 20 thinned points)
  */
 async function getFacilitiesAlongRoute(origin, destination, types = [
-  'hospital', 'pharmacy', 'police', 'atm', 'gas_station', 'lodging', 'car_repair', 'parking', 'restaurant', 'restroom'
-], routeCoords = []) {
-  const cacheKey = `${origin}->${destination}->${[...types].sort().join(',')}`;
+  'hospital', 'pharmacy', 'police', 'gas_station', 'lodging', 'car_repair', 'parking', 'restaurant', 'restroom'
+], routeCoords = [], options = {}) {
+  const userLoc = options.userLocation || null;
+  const userLocKey = userLoc ? `${Number(userLoc.lat).toFixed(2)},${Number(userLoc.lng).toFixed(2)}` : '';
+  const cacheKey = `${origin}->${destination}->${[...types].sort().join(',')}->${userLocKey}`;
   if (cache.facilities.has(cacheKey)) {
     return cache.facilities.get(cacheKey);
   }
 
-  const [originPoint, destinationPoint] = await Promise.all([geocode(origin), geocode(destination)]);
+  const allCoords = routeCoords && routeCoords.length >= 2 ? routeCoords : [];
+
+  let originPoint = options.originCoords && options.originCoords.lat ? options.originCoords : null;
+  let destinationPoint = options.destinationCoords && options.destinationCoords.lat ? options.destinationCoords : null;
+
+  if (!originPoint || !destinationPoint) {
+    try {
+      const [o, d] = await Promise.all([
+        originPoint ? Promise.resolve(originPoint) : geocode(origin),
+        destinationPoint ? Promise.resolve(destinationPoint) : geocode(destination)
+      ]);
+      if (!originPoint) originPoint = o;
+      if (!destinationPoint) destinationPoint = d;
+    } catch (gErr) {
+      if (allCoords.length >= 2) {
+        originPoint = { lat: allCoords[0][1], lng: allCoords[0][0], label: origin };
+        destinationPoint = { lat: allCoords[allCoords.length - 1][1], lng: allCoords[allCoords.length - 1][0], label: destination };
+      } else {
+        throw gErr;
+      }
+    }
+  }
 
   // --- Compute bounding box from route geometry or fallback to O/D points ---
   let minLat, maxLat, minLng, maxLng;
-  const allCoords = routeCoords && routeCoords.length >= 2 ? routeCoords : [];
 
   if (allCoords.length >= 2) {
     minLat = Math.min(...allCoords.map(c => c[1]));
@@ -522,6 +544,14 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     maxLng = Math.max(originPoint.lng, destinationPoint.lng);
   }
 
+  // If user GPS is provided, make sure bbox covers user position
+  if (userLoc && userLoc.lat && userLoc.lng) {
+    minLat = Math.min(minLat, userLoc.lat);
+    maxLat = Math.max(maxLat, userLoc.lat);
+    minLng = Math.min(minLng, userLoc.lng);
+    maxLng = Math.max(maxLng, userLoc.lng);
+  }
+
   // Expand bbox by ~15 km on each side (0.14 degrees ≈ 15 km)
   const PAD = 0.14;
   const bbox = `${(minLat - PAD).toFixed(5)},${(minLng - PAD).toFixed(5)},${(maxLat + PAD).toFixed(5)},${(maxLng + PAD).toFixed(5)}`;
@@ -531,14 +561,14 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     ? allCoords.map(c => [c[1], c[0]])
     : [[originPoint.lat, originPoint.lng], [destinationPoint.lat, destinationPoint.lng]];
 
-  const wanted = new Set(types);
+  // Filter out ATM — explicitly excluded as requested
+  const wanted = new Set(types.filter(t => t !== 'atm'));
 
-  // Build ONE bounding-box Overpass query with all facility types
+  // Build ONE bounding-box Overpass query with all facility types (excluding ATM)
   const clauses = [];
   if (wanted.has('hospital'))    clauses.push('nwr["amenity"~"hospital|clinic"]');
   if (wanted.has('pharmacy'))    clauses.push('nwr["amenity"="pharmacy"]', 'nwr["healthcare"="pharmacy"]', 'nwr["shop"="chemist"]');
   if (wanted.has('police'))      clauses.push('nwr["amenity"="police"]');
-  if (wanted.has('atm'))         clauses.push('nwr["amenity"~"atm|bank"]');
   if (wanted.has('gas_station')) clauses.push('nwr["amenity"="fuel"]');
   if (wanted.has('lodging'))     clauses.push('nwr["tourism"~"hotel|motel|guest_house|hostel"]');
   if (wanted.has('car_repair'))  clauses.push('nwr["shop"~"car_repair|tyres"]', 'nwr["craft"="car_repair"]');
@@ -548,14 +578,13 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
 
   if (!clauses.length) return [];
 
-  // Single compact bbox query — much faster than 140 radius sub-queries
+  // Single compact bbox query — fast and covers corridor
   const query = `[out:json][timeout:25];(${clauses.map(c => `${c}(${bbox});`).join('')});out center tags;`;
 
   const defaultNames = {
     hospital:    'Hospital / Health Center',
     pharmacy:    'Pharmacy / Medical Store',
     police:      'Police Station / Outpost',
-    atm:         'ATM / Banking Facility',
     gas_station: 'Petrol Pump',
     lodging:     'Hotel / Lodge',
     car_repair:  'Auto Repair / Garage',
@@ -568,7 +597,6 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     if (['hospital', 'clinic'].includes(tags.amenity)) return 'hospital';
     if (tags.amenity === 'pharmacy' || tags.healthcare === 'pharmacy' || tags.shop === 'chemist') return 'pharmacy';
     if (tags.amenity === 'police') return 'police';
-    if (['atm', 'bank'].includes(tags.amenity)) return 'atm';
     if (tags.amenity === 'fuel') return 'gas_station';
     if (tags.shop === 'car_repair' || tags.shop === 'tyres' || tags.craft === 'car_repair') return 'car_repair';
     if (tags.amenity === 'parking' || tags.highway === 'rest_area') return 'parking';
@@ -592,7 +620,6 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     const elements = response.data?.elements || [];
 
     const seen = new Set();
-    // Per-type count cap: max 8 per category to ensure balanced results across all types
     const typeCount = {};
     const PER_TYPE_MAX = 8;
 
@@ -605,6 +632,9 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
         const facilityType = classifyElement(tags);
         if (!facilityType || !wanted.has(facilityType)) return null;
         const dist = minDistToRoute(point[0], point[1]);
+        const distFromUser = (userLoc && userLoc.lat && userLoc.lng)
+          ? distanceMeters(point[0], point[1], userLoc.lat, userLoc.lng)
+          : null;
         const address = [tags['addr:street'], tags['addr:city'] || tags['addr:district'], tags['addr:postcode']]
           .filter(Boolean).join(', ');
         return {
@@ -616,6 +646,7 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
           address: address || 'Along Logistics Highway',
           coordinates: { lat: point[0], lng: point[1] },
           distanceMeters: dist,
+          distanceFromUser: distFromUser,
           openingHours: tags.opening_hours || null,
           phone: tags.phone || tags['contact:phone'] || null,
           website: tags.website || tags['contact:website'] || null,
@@ -623,7 +654,12 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
         };
       })
       .filter(Boolean)
-      .sort((a, b) => a.distanceMeters - b.distanceMeters);
+      .sort((a, b) => {
+        if (a.distanceFromUser != null && b.distanceFromUser != null) {
+          return a.distanceFromUser - b.distanceFromUser;
+        }
+        return a.distanceMeters - b.distanceMeters;
+      });
 
     for (const item of sorted) {
       if (seen.has(item.placeId)) continue;
@@ -635,7 +671,12 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     }
 
     if (facilities.length > 0) {
-      facilities.sort((a, b) => a.distanceMeters - b.distanceMeters);
+      facilities.sort((a, b) => {
+        if (a.distanceFromUser != null && b.distanceFromUser != null) {
+          return a.distanceFromUser - b.distanceFromUser;
+        }
+        return a.distanceMeters - b.distanceMeters;
+      });
       cache.facilities.set(cacheKey, facilities);
       return facilities;
     }
@@ -643,16 +684,15 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     console.warn('[Overpass] bbox query failed:', err.message);
   }
 
-  // --- Fallback: parallel Photon searches per facility type ---
+  // --- Fallback: parallel Photon searches per facility type (excluding ATM) ---
   try {
-    const midLat = (originPoint.lat + destinationPoint.lat) / 2;
-    const midLng = (originPoint.lng + destinationPoint.lng) / 2;
+    const midLat = userLoc && userLoc.lat ? (userLoc.lat + destinationPoint.lat) / 2 : (originPoint.lat + destinationPoint.lat) / 2;
+    const midLng = userLoc && userLoc.lng ? (userLoc.lng + destinationPoint.lng) / 2 : (originPoint.lng + destinationPoint.lng) / 2;
 
     const photonSearches = [
       { q: 'hospital clinic', type: 'hospital', name: 'Hospital' },
       { q: 'pharmacy chemist medical', type: 'pharmacy', name: 'Pharmacy' },
       { q: 'police station thana outpost', type: 'police', name: 'Police Station' },
-      { q: 'atm bank cash', type: 'atm', name: 'ATM / Banking' },
       { q: 'fuel petrol diesel', type: 'gas_station', name: 'Petrol Pump' },
       { q: 'hotel lodge guest house', type: 'lodging', name: 'Hotel / Lodge' },
       { q: 'car repair garage mechanic', type: 'car_repair', name: 'Garage / Repair' },
@@ -678,6 +718,9 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
             if (!seenFallback.has(id)) {
               seenFallback.add(id);
               const dist = minDistToRoute(lat, lng);
+              const distFromUser = (userLoc && userLoc.lat && userLoc.lng)
+                ? distanceMeters(lat, lng, userLoc.lat, userLoc.lng)
+                : null;
               if (dist <= 50000) {
                 const address = [p.street, p.city || p.district, p.state].filter(Boolean).join(', ');
                 fallbackResults.push({
@@ -688,6 +731,7 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
                   address: address || 'Along Highway Corridor',
                   coordinates: { lat, lng },
                   distanceMeters: dist,
+                  distanceFromUser: distFromUser,
                   openingHours: null, phone: null, website: null,
                   source: 'OpenStreetMap'
                 });
@@ -699,7 +743,12 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     }));
 
     if (fallbackResults.length > 0) {
-      fallbackResults.sort((a, b) => a.distanceMeters - b.distanceMeters);
+      fallbackResults.sort((a, b) => {
+        if (a.distanceFromUser != null && b.distanceFromUser != null) {
+          return a.distanceFromUser - b.distanceFromUser;
+        }
+        return a.distanceMeters - b.distanceMeters;
+      });
       cache.facilities.set(cacheKey, fallbackResults);
       return fallbackResults;
     }
@@ -707,7 +756,7 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     console.warn('[Photon Fallback] error:', pErr.message);
   }
 
-  return [];
+    return [];
 }
 
 module.exports = {

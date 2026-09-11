@@ -51,9 +51,17 @@ export const api = {
   getRouteAlerts: (origin, dest) =>
     request('GET', `/alerts/route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}`),
 
-  // Facilities — POST to send actual route geometry for corridor-based search
-  getFacilitiesNearRoute: (origin, dest, routeCoords = []) =>
-    request('POST', '/facilities/near-route', { origin, destination: dest, routeCoords }),
+  // Facilities — POST to send actual route geometry and GPS location for corridor-based search
+  getFacilitiesNearRoute: (origin, dest, routeCoords = [], options = {}) =>
+    request('POST', '/facilities/near-route', {
+      origin,
+      destination: dest,
+      routeCoords,
+      originCoords: options.originCoords,
+      destinationCoords: options.destinationCoords,
+      userLocation: options.userLocation,
+      types: options.types
+    }),
 
 
   // ML

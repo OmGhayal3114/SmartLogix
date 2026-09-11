@@ -371,7 +371,6 @@ export function addFacilityMarkers(facilities) {
     hospital: '#ef4444',
     pharmacy: '#38bdf8',
     police: '#60a5fa',
-    atm: '#34d399',
     gas_station: '#5eead4',
     lodging: '#fb923c',
     car_repair: '#fbbf24',
@@ -384,12 +383,11 @@ export function addFacilityMarkers(facilities) {
     hospital: '🏥',
     pharmacy: '💊',
     police: '🚓',
-    atm: '🏧',
     gas_station: '⛽',
     lodging: '🏨',
     car_repair: '🔧',
     parking: '🅿️',
-    restaurant: '🍴',
+    restaurant: '🍽️',
     restroom: '🚻'
   };
 
@@ -397,7 +395,6 @@ export function addFacilityMarkers(facilities) {
     hospital: 'Hospital / Clinic',
     pharmacy: 'Pharmacy / Medical',
     police: 'Police Station',
-    atm: 'ATM / Banking',
     gas_station: 'Petrol Pump',
     lodging: 'Hotel / Lodge',
     car_repair: 'Vehicle Repair / Garage',
@@ -408,6 +405,7 @@ export function addFacilityMarkers(facilities) {
 
   facilities.forEach(f => {
     if (!f.coordinates || !f.coordinates.lat || !f.coordinates.lng) return;
+    if (f.facilityType === 'atm') return; // Exclude ATM
 
     const color = TYPE_COLOR[f.facilityType] || '#14b8a6';
     const symbol = TYPE_SYMBOL[f.facilityType] || '📍';
@@ -420,6 +418,17 @@ export function addFacilityMarkers(facilities) {
     const distText = f.distanceMeters >= 1000
       ? `${(f.distanceMeters / 1000).toFixed(1)} km`
       : `${Math.round(f.distanceMeters || 0)} m`;
+
+    let userGpsBadge = '';
+    if (state.userLocation && state.userLocation.lat) {
+      const dMeters = f.distanceFromUser != null
+        ? f.distanceFromUser
+        : (typeof distanceMeters === 'function' ? distanceMeters(state.userLocation.lat, state.userLocation.lng, f.coordinates.lat, f.coordinates.lng) : null);
+      if (dMeters != null) {
+        const uText = dMeters >= 1000 ? `${(dMeters / 1000).toFixed(1)} km` : `${Math.round(dMeters)} m`;
+        userGpsBadge = `<div style="color:#38bdf8;font-size:11px;margin-top:4px;font-weight:600">📡 ${uText} from your GPS location</div>`;
+      }
+    }
 
     const details = [];
     if (f.brand) details.push(`<span style="color:#5eead4">Brand: ${escapeHtml(f.brand)}</span>`);
@@ -434,11 +443,12 @@ export function addFacilityMarkers(facilities) {
           <span style="font-size:10px;font-weight:bold;background:${color}22;color:${color};border:1px solid ${color}44;padding:2px 6px;border-radius:4px;white-space:nowrap">${escapeHtml(label)}</span>
         </div>
         <div style="color:#94a3b8;font-size:11px;margin-top:6px;line-height:1.4">${escapeHtml(f.address)}</div>
-        <div style="color:#5eead4;font-size:11px;margin-top:4px">📍 ${distText} off route corridor</div>
+        ${userGpsBadge}
+        <div style="color:#5eead4;font-size:11px;margin-top:2px">📍 ${distText} off route corridor</div>
         ${details.length > 0 ? `<div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid #ffffff15;display:flex;flex-direction:column;gap:3px">${details.join('')}</div>` : ''}
         <div style="margin-top:12px">
           <button onclick="window.getDirectionsToFacility('${f.placeId || f.id}')" style="background:#14b8a6;color:#040a12;border:none;width:100%;padding:7px 12px;border-radius:6px;font-weight:bold;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <span>🧭</span> Get Directions
+            <span>🧭</span> Navigate from GPS
           </button>
         </div>
       </div>
