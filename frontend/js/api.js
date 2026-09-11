@@ -38,6 +38,7 @@ export const api = {
   // Routes
   calculateRoutes: (body) => request('POST', '/routes', body),
   calculateWaypointRoute: (body) => request('POST', '/routes/waypoint', body),
+  calculateDirectRoute: (body) => request('POST', '/routes/direct', body),
   suggestLocations: (q) => request('GET', '/routes/suggest?q=' + encodeURIComponent(q)),
   reverseGeocode: (lat, lng) => request('GET', `/routes/reverse-geocode?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`),
 

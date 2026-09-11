@@ -172,6 +172,21 @@ exports.calculateWaypointRoute = async (req, res) => {
   }
 };
 
+exports.calculateDirectRoute = async (req, res) => {
+  try {
+    const { start, destination, vehicleType } = req.body;
+    if (!start || !destination) {
+      return res.status(400).json({ error: 'Start and destination are required.' });
+    }
+    const route = await mapsService.getDirectRoute(start, destination, vehicleType);
+    return res.json({ route });
+  } catch (err) {
+    return res.status(502).json({
+      error: err.message || 'Could not calculate direct route.'
+    });
+  }
+};
+
 exports.suggestLocations = async (req, res) => {
   try {
     const { q } = req.query;

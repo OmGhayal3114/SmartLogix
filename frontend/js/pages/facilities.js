@@ -210,6 +210,21 @@ window.selectFacility = async (id) => {
   const facility = (state.facilities || []).find(f => f.id === id || f.placeId === id);
   if (!facility || !facility.coordinates) return;
   state.selectedFacility = facility;
+
+  // Promptly trigger GPS lookup so directions can immediately utilize device location
+  if (navigator.geolocation && (!state.userLocation || !state.userLocation.lat)) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        state.userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (window.displayFacilityRoute && state.selectedFacility && state.page === 'Live Network') {
+          window.displayFacilityRoute(state.selectedFacility, 'gps');
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  }
+
   const { go } = await import('../router.js');
   const { notify } = await import('../render.js');
   notify(`Getting directions to ${facility.name}…`, 'info');

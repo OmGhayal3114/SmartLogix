@@ -12,11 +12,85 @@ let userAccuracyCircle = null;
 let facilityMarkersGroup = null;
 let alertMarkersGroup = null;
 let riskZonesLayerGroup = null;
+let facilityTargetMarker = null;
+let facilityStartMarker = null;
 let locationWatchId = null;
 
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+}
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+const TYPE_COLOR = {
+  hospital: '#ef4444',
+  pharmacy: '#38bdf8',
+  police: '#60a5fa',
+  gas_station: '#5eead4',
+  lodging: '#fb923c',
+  car_repair: '#fbbf24',
+  parking: '#94a3b8',
+  restaurant: '#a78bfa',
+  restroom: '#2dd4bf'
+};
+
+const TYPE_SYMBOL = {
+  hospital: '🏥',
+  pharmacy: '💊',
+  police: '🚓',
+  gas_station: '⛽',
+  lodging: '🏨',
+  car_repair: '🔧',
+  parking: '🅿️',
+  restaurant: '🍽️',
+  restroom: '🚻'
+};
+
+const TYPE_LABEL = {
+  hospital: 'Hospital / Clinic',
+  pharmacy: 'Pharmacy / Medical',
+  police: 'Police Station',
+  gas_station: 'Petrol Pump',
+  lodging: 'Hotel / Lodge',
+  car_repair: 'Vehicle Repair / Garage',
+  parking: 'Parking & Rest Area',
+  restaurant: 'Restaurant / Dhaba',
+  restroom: 'Public Restroom'
+};
+
+/**
+ * Creates custom target pin SVG for selected facility.
+ */
+function createFacilityPinIcon(color, symbol) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="50" viewBox="0 0 38 50">
+    <defs>
+      <filter id="p-fac-sh" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.75"/>
+      </filter>
+    </defs>
+    <path d="M19 0C8.5 0 0 8.5 0 19c0 13.8 17 29.5 18.2 30.6.4.4 1.2.4 1.6 0C21 48.5 38 32.8 38 19 38 8.5 29.5 0 19 0z" fill="${color}" filter="url(#p-fac-sh)"/>
+    <circle cx="19" cy="19" r="13" fill="#07111f" stroke="#ffffff" stroke-width="2"/>
+    <text x="19" y="24" fill="#ffffff" font-size="14" font-family="Apple Color Emoji, Segoe UI Emoji, sans-serif" text-anchor="middle">${symbol}</text>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: 'custom-osm-target-pin',
+    iconSize: [38, 50],
+    iconAnchor: [19, 50],
+    popupAnchor: [0, -50]
+  });
 }
 
 /**
@@ -367,42 +441,6 @@ export function addFacilityMarkers(facilities) {
   facilityMarkersGroup.clearLayers();
   if (!facilities || facilities.length === 0) return;
 
-  const TYPE_COLOR = {
-    hospital: '#ef4444',
-    pharmacy: '#38bdf8',
-    police: '#60a5fa',
-    gas_station: '#5eead4',
-    lodging: '#fb923c',
-    car_repair: '#fbbf24',
-    parking: '#94a3b8',
-    restaurant: '#a78bfa',
-    restroom: '#2dd4bf'
-  };
-
-  const TYPE_SYMBOL = {
-    hospital: '🏥',
-    pharmacy: '💊',
-    police: '🚓',
-    gas_station: '⛽',
-    lodging: '🏨',
-    car_repair: '🔧',
-    parking: '🅿️',
-    restaurant: '🍽️',
-    restroom: '🚻'
-  };
-
-  const TYPE_LABEL = {
-    hospital: 'Hospital / Clinic',
-    pharmacy: 'Pharmacy / Medical',
-    police: 'Police Station',
-    gas_station: 'Petrol Pump',
-    lodging: 'Hotel / Lodge',
-    car_repair: 'Vehicle Repair / Garage',
-    parking: 'Parking & Rest Area',
-    restaurant: 'Restaurant / Dhaba',
-    restroom: 'Public Restroom'
-  };
-
   facilities.forEach(f => {
     if (!f.coordinates || !f.coordinates.lat || !f.coordinates.lng) return;
     if (f.facilityType === 'atm') return; // Exclude ATM
@@ -459,11 +497,20 @@ export function addFacilityMarkers(facilities) {
 }
 
 /**
- * Calculates road detour route to a selected facility.
- * Uses current user GPS direction / position when available, falling back to trip corridor origin.
+/**
+ * Calculates road route to a selected facility.
+ * Uses current user GPS position when available, falling back to trip corridor origin.
+ * Prominently pins the facility destination and the start location on the map,
+ * and fits the view to both points with turn-by-turn guidance.
  */
-export async function displayFacilityRoute(facility) {
-  if (!map || !facility?.coordinates) return;
+export async function displayFacilityRoute(facility, forceMode = null) {
+  if (!facility?.coordinates?.lat || !facility?.coordinates?.lng) return;
+
+  // If map is not yet created, initialize it
+  if (!map) {
+    const oMap = await initMap('osm-map');
+    if (!oMap) return;
+  }
 
   // Save original route if not already saved
   if (!state._originalMainRoute && state.selectedRoute) {
@@ -471,16 +518,33 @@ export async function displayFacilityRoute(facility) {
   }
   state.selectedFacility = facility;
 
-  const destLat = facility.coordinates.lat;
-  const destLng = facility.coordinates.lng;
+  const destLat = Number(facility.coordinates.lat);
+  const destLng = Number(facility.coordinates.lng);
 
-  // Prioritize current user GPS direction/position if active
+  // If GPS is currently connecting and not yet resolved, flag for reactive update
+  const hasGps = Boolean(state.userLocation && state.userLocation.lat && state.userLocation.lng);
+  if (!hasGps && forceMode !== 'origin' && navigator.geolocation) {
+    state._facilityRoutePendingGps = true;
+  }
+
+  // Determine starting point: user GPS vs corridor origin
   let startLat = null;
   let startLng = null;
   let startLabel = 'Current Location';
   let isUserGps = false;
 
-  if (state.userLocation && state.userLocation.lat && state.userLocation.lng) {
+  if (forceMode === 'origin' && state.selectedRoute?.origin?.lat) {
+    startLat = state.selectedRoute.origin.lat;
+    startLng = state.selectedRoute.origin.lng;
+    startLabel = state.selectedRoute.startAddress || state.origin || 'Trip Origin';
+    isUserGps = false;
+    state._facilityRoutePendingGps = false;
+  } else if (forceMode === 'gps' && hasGps) {
+    startLat = state.userLocation.lat;
+    startLng = state.userLocation.lng;
+    startLabel = 'Your Current GPS Location';
+    isUserGps = true;
+  } else if (hasGps) {
     startLat = state.userLocation.lat;
     startLng = state.userLocation.lng;
     startLabel = 'Your Current GPS Location';
@@ -489,18 +553,99 @@ export async function displayFacilityRoute(facility) {
     startLat = state.selectedRoute.origin.lat;
     startLng = state.selectedRoute.origin.lng;
     startLabel = state.selectedRoute.startAddress || state.origin || 'Trip Origin';
+    isUserGps = false;
   } else if (state.selectedRoute?.geometry?.coordinates?.[0]) {
     startLat = state.selectedRoute.geometry.coordinates[0][1];
     startLng = state.selectedRoute.geometry.coordinates[0][0];
     startLabel = state.selectedRoute.startAddress || state.origin || 'Corridor Origin';
+    isUserGps = false;
   }
 
   if (!startLat || !startLng) return;
 
-  try {
-    let route = null;
+  // Track mode in state
+  state._facilityRouteMode = isUserGps ? 'gps' : 'origin';
 
-    // 1. Try road route from start point
+  // 1. PROMINENTLY PLACE FACILITY TARGET MARKER ON MAP
+  const color = TYPE_COLOR[facility.facilityType] || '#ef4444';
+  const symbol = TYPE_SYMBOL[facility.facilityType] || '📍';
+  const label = TYPE_LABEL[facility.facilityType] || facility.facilityType || 'Facility';
+
+  if (facilityTargetMarker) {
+    try { map.removeLayer(facilityTargetMarker); } catch (_) {}
+    facilityTargetMarker = null;
+  }
+
+  facilityTargetMarker = L.marker([destLat, destLng], {
+    icon: createFacilityPinIcon(color, symbol),
+    zIndexOffset: 2500
+  }).addTo(map);
+
+  const directDistMeters = distanceMeters(startLat, startLng, destLat, destLng);
+  const directDistText = directDistMeters >= 1000
+    ? `${(directDistMeters / 1000).toFixed(1)} km`
+    : `${Math.round(directDistMeters)} m`;
+
+  const popupHtml = `
+    <div style="font-family:Inter,sans-serif;min-width:240px;max-width:300px;padding:4px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <strong style="font-size:14px;color:#f8fafc;line-height:1.3">${escapeHtml(facility.name)}</strong>
+        <span style="font-size:10px;font-weight:bold;background:${color}22;color:${color};border:1px solid ${color}44;padding:2px 6px;border-radius:4px;white-space:nowrap">${escapeHtml(label)}</span>
+      </div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:6px;line-height:1.4">${escapeHtml(facility.address || 'Along route corridor')}</div>
+      <div style="color:#38bdf8;font-size:11px;margin-top:4px;font-weight:600">
+        📍 ${directDistText} from ${escapeHtml(startLabel)}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-direction:column">
+        <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:#040a12;border:none;width:100%;padding:6px 10px;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer">
+          + Add as Waypoint to Trip
+        </button>
+        <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:#1e293b;color:#38bdf8;border:1px solid #38bdf844;padding:6px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:4px">
+          ↗ Open in Google Maps
+        </a>
+      </div>
+    </div>
+  `;
+  facilityTargetMarker.bindPopup(popupHtml).openPopup();
+
+  // 2. PROMINENTLY PLACE START LOCATION MARKER ON MAP
+  if (facilityStartMarker) {
+    try { map.removeLayer(facilityStartMarker); } catch (_) {}
+    facilityStartMarker = null;
+  }
+
+  const startPinText = isUserGps ? 'ME' : 'A';
+  const startColor = isUserGps ? '#38bdf8' : '#5eead4';
+
+  facilityStartMarker = L.marker([startLat, startLng], {
+    icon: createPinIcon(startColor, startPinText),
+    zIndexOffset: 2400
+  }).addTo(map);
+
+  facilityStartMarker.bindPopup(`
+    <div style="font-family:Inter,sans-serif;padding:4px">
+      <b style="color:${startColor};font-size:13px">📍 ${escapeHtml(startLabel)}</b>
+      <div style="color:#cbd5e1;font-size:11px;margin-top:4px">Coordinates: ${startLat.toFixed(4)}, ${startLng.toFixed(4)}</div>
+      <div style="color:#94a3b8;font-size:10px;margin-top:2px">Departure point for facility directions</div>
+    </div>
+  `);
+
+  // 3. RETRIEVE ROUTE VIA BACKEND PROXY OR LOCAL OSRM WITH FAILSAFE
+  let route = null;
+
+  try {
+    const res = await api.calculateDirectRoute({
+      start: { lat: startLat, lng: startLng, name: startLabel },
+      destination: { lat: destLat, lng: destLng, name: facility.name },
+      vehicleType: state.vehicleType || 'Truck'
+    });
+    if (res && res.route && res.route.geometry) {
+      route = res.route;
+    }
+  } catch (_) {}
+
+  // Fallback to client-side OSRM if backend route call had an issue
+  if (!route) {
     try {
       const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
       const resp = await fetch(osrmUrl);
@@ -509,117 +654,132 @@ export async function displayFacilityRoute(facility) {
         route = data.routes[0];
       }
     } catch (_) {}
+  }
 
-    // 2. If GPS is remote / cross-continent where OSRM cannot connect, fall back to trip origin
-    if (!route && isUserGps && state.selectedRoute?.origin?.lat) {
-      startLat = state.selectedRoute.origin.lat;
-      startLng = state.selectedRoute.origin.lng;
-      startLabel = state.selectedRoute.startAddress || state.origin || 'Trip Origin';
+  // Failsafe geometric route so route line is ALWAYS displayed
+  if (!route || !route.geometry) {
+    const estSeconds = Math.max(60, Math.round((directDistMeters / 1000) / 40 * 3600));
+    route = {
+      distance: directDistMeters,
+      duration: estSeconds,
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [startLng, startLat],
+          [destLng, destLat]
+        ]
+      },
+      legs: [{
+        distance: directDistMeters,
+        duration: estSeconds,
+        steps: [
+          { distance: directDistMeters, maneuver: { type: 'depart' }, name: `Follow road towards ${facility.name}` }
+        ]
+      }]
+    };
+  }
 
-      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
-      const resp = await fetch(osrmUrl);
-      const data = await resp.json();
-      if (data.code === 'Ok' && data.routes?.[0]?.geometry) {
-        route = data.routes[0];
-      }
+  // 4. DRAW DETOUR ROUTE LAYER IN HIGH-VISIBILITY NEON ORANGE
+  if (detourRouteLayer) {
+    try { map.removeLayer(detourRouteLayer); } catch (_) {}
+    detourRouteLayer = null;
+  }
+
+  if (mainRouteLayer) {
+    mainRouteLayer.setStyle({ opacity: 0.25, weight: 4 });
+  }
+
+  detourRouteLayer = L.geoJSON(route.geometry, {
+    style: {
+      color: '#fb923c',
+      weight: 6,
+      opacity: 0.95,
+      lineCap: 'round',
+      lineJoin: 'round'
     }
+  }).addTo(map);
 
-    if (!route || !route.geometry) {
-      throw new Error('No drivable road route found to this facility.');
-    }
-
-    // Remove previous detour line
+  // 5. FIT CAMERA BOUNDS TO BOTH START & FACILITY WITH GENEROUS PADDING
+  try {
+    const bounds = L.latLngBounds([
+      [startLat, startLng],
+      [destLat, destLng]
+    ]);
     if (detourRouteLayer) {
-      map.removeLayer(detourRouteLayer);
-      detourRouteLayer = null;
+      bounds.extend(detourRouteLayer.getBounds());
     }
+    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+  } catch (_) {}
 
-    // Dim main route for clear visual focus on the facility route
-    if (mainRouteLayer) {
-      mainRouteLayer.setStyle({ opacity: 0.25, weight: 4 });
-    }
+  // 6. FORMAT METRICS & UPDATE HUD
+  const distNum = typeof route.distanceValue === 'number' ? route.distanceValue : (typeof route.distance === 'number' ? route.distance : directDistMeters);
+  const durNum = typeof route.durationValue === 'number' ? route.durationValue : (typeof route.duration === 'number' ? route.duration : Math.round(distNum / 11));
 
-    // Draw detour route in vibrant high-visibility orange
-    detourRouteLayer = L.geoJSON(route.geometry, {
-      style: {
-        color: '#fb923c',
-        weight: 6,
-        opacity: 0.95,
-        lineCap: 'round',
-        lineJoin: 'round'
-      }
-    }).addTo(map);
+  const distText = distNum >= 1000 ? `${(distNum / 1000).toFixed(1)} km` : `${Math.round(distNum)} m`;
+  const durMins = Math.max(1, Math.round(durNum / 60));
+  const durHours = Math.floor(durMins / 60);
+  const durText = durHours > 0 ? `${durHours} hr ${durMins % 60} min` : `${durMins} min`;
 
-    // Fit view to detour route with comfortable padding
-    map.fitBounds(detourRouteLayer.getBounds(), { padding: [50, 50] });
-
-    // Open popup for the target facility marker
-    if (facilityMarkersGroup) {
-      facilityMarkersGroup.eachLayer(layer => {
-        const pos = layer.getLatLng && layer.getLatLng();
-        if (pos && Math.abs(pos.lat - destLat) < 0.0008 && Math.abs(pos.lng - destLng) < 0.0008) {
-          layer.openPopup();
-        }
-      });
-    }
-
-    // Format metrics
-    const distText = route.distance >= 1000
-      ? `${(route.distance / 1000).toFixed(1)} km`
-      : `${Math.round(route.distance)} m`;
-    const durMins = Math.max(1, Math.round(route.duration / 60));
-    const durHours = Math.floor(durMins / 60);
-    const durText = durHours > 0 ? `${durHours} hr ${durMins % 60} min` : `${durMins} min`;
-
-    // Update HUD
-    const infoEl = document.getElementById('facility-direction-info');
-    if (infoEl) {
-      infoEl.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-          <div>
-            <b style="color:#fb923c">🧭 Route to ${escapeHtml(facility.name)}</b>
-            <div style="color:#cbd5e1;font-size:11px">
-              From: <span style="color:#5eead4">${escapeHtml(startLabel)}</span> · ${distText} · ${durText}
-            </div>
+  const infoEl = document.getElementById('facility-direction-info');
+  if (infoEl) {
+    infoEl.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div>
+          <b style="color:#fb923c;font-size:12px">${symbol} Directions to ${escapeHtml(facility.name)}</b>
+          <div style="color:#cbd5e1;font-size:11px;margin-top:2px">
+            From: <span style="color:${startColor};font-weight:600">${escapeHtml(startLabel)}</span>
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
-            <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:#040a12;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold" title="Route: Origin -> Facility -> Final Destination">
-              + Add as Waypoint
-            </button>
-            <button onclick="window.returnToMainRoute()" style="background:#0f172a;color:#5eead4;border:1px solid #14b8a6;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold">
-              ← Direct Route
-            </button>
-            <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:#1e293b;color:#38bdf8;border:1px solid #38bdf844;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:inline-flex;align-items:center;gap:4px">
-              ↗ Google Maps
-            </a>
+          <div style="color:#5eead4;font-size:11px;margin-top:2px;font-weight:600">
+            📏 ${distText} · ⏱️ ${durText}
           </div>
         </div>
-      `;
-    }
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+          ${isUserGps && state.selectedRoute?.origin?.lat ? `
+            <button onclick="window.routeFacilityFrom('origin')" style="background:#0f172a;color:#cbd5e1;border:1px solid #334155;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px" title="Show directions from trip origin instead">
+              Trip Origin
+            </button>
+          ` : (!isUserGps && state.userLocation?.lat ? `
+            <button onclick="window.routeFacilityFrom('gps')" style="background:#0f172a;color:#38bdf8;border:1px solid #38bdf844;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px" title="Show directions from your current GPS location">
+              📡 My GPS
+            </button>
+          ` : '')}
+          <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:#040a12;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold" title="Route: Origin -> Facility -> Final Destination">
+            + Waypoint
+          </button>
+          <button onclick="window.returnToMainRoute()" style="background:#0f172a;color:#5eead4;border:1px solid #14b8a6;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold">
+            ✕ Exit
+          </button>
+          <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:#1e293b;color:#38bdf8;border:1px solid #38bdf844;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:inline-flex;align-items:center;gap:4px">
+            ↗ Google Maps
+          </a>
+        </div>
+      </div>
+    `;
+  }
 
-    const listEl = document.getElementById('facility-directions-list');
-    if (listEl) {
-      const steps = route.legs?.[0]?.steps || [];
+  const listEl = document.getElementById('facility-directions-list');
+  if (listEl) {
+    const steps = route.steps || (route.legs?.[0]?.steps || []).map(formatStep);
+    if (steps && steps.length > 0) {
       listEl.innerHTML = steps.map((step, idx) => {
-        const stepDist = step.distance >= 1000
-          ? `${(step.distance / 1000).toFixed(1)} km`
-          : `${Math.round(step.distance || 0)} m`;
-        const man = step.maneuver || {};
-        const road = step.name ? ` onto ${escapeHtml(step.name)}` : '';
-        const act = man.type === 'depart' ? 'Depart' : man.type === 'arrive' ? 'Arrive at destination' : (man.type || 'Continue');
+        const stepText = typeof step === 'string' ? step : (step.name ? `${idx + 1}. Continue onto ${step.name}` : `${idx + 1}. Continue`);
         return `
-          <div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #ffffff10;font-size:11px">
-            <b style="color:#fb923c;min-width:38px">${stepDist}</b>
-            <span>${idx + 1}. ${act}${road}</span>
+          <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #ffffff10;font-size:11px;color:#e2e8f0">
+            <span>${escapeHtml(stepText)}</span>
           </div>
         `;
-      }).join('') || '<div style="color:#94a3b8">Turn guidance ready.</div>';
+      }).join('');
+    } else {
+      listEl.innerHTML = `<div style="color:#94a3b8;font-size:11px">Head towards ${escapeHtml(facility.name)} on highway corridor.</div>`;
     }
-  } catch (err) {
-    const infoEl = document.getElementById('facility-direction-info');
-    if (infoEl) infoEl.textContent = `Could not calculate directions to ${facility.name}.`;
   }
 }
+
+window.routeFacilityFrom = (mode) => {
+  if (state.selectedFacility) {
+    displayFacilityRoute(state.selectedFacility, mode);
+  }
+};
 
 /**
  * Calculates complete multi-stop journey: Origin -> Facility Waypoint -> Destination.
@@ -664,14 +824,25 @@ export async function continueWithFacilityWaypoint() {
 window.continueWithFacilityWaypoint = continueWithFacilityWaypoint;
 
 /**
- * Restores the original direct route and removes any detours.
+ * Restores the original direct route and removes any detours and facility pins.
  */
 export function returnToMainRoute() {
   if (detourRouteLayer) {
-    map.removeLayer(detourRouteLayer);
+    try { map.removeLayer(detourRouteLayer); } catch (_) {}
     detourRouteLayer = null;
   }
+  if (facilityTargetMarker) {
+    try { map.removeLayer(facilityTargetMarker); } catch (_) {}
+    facilityTargetMarker = null;
+  }
+  if (facilityStartMarker) {
+    try { map.removeLayer(facilityStartMarker); } catch (_) {}
+    facilityStartMarker = null;
+  }
   state.selectedFacility = null;
+  state._facilityRouteMode = null;
+  state._facilityRoutePendingGps = false;
+
   if (state._originalMainRoute) {
     state.selectedRoute = state._originalMainRoute;
   }
@@ -679,7 +850,7 @@ export function returnToMainRoute() {
   // Restore main route opacity & green styling
   if (mainRouteLayer) {
     mainRouteLayer.setStyle({ opacity: 0.95, weight: 6, color: '#10b981' });
-    map.fitBounds(mainRouteLayer.getBounds(), { padding: [40, 40] });
+    try { map.fitBounds(mainRouteLayer.getBounds(), { padding: [40, 40] }); } catch (_) {}
   }
 
   // Clear detour HUD
@@ -725,6 +896,14 @@ export function startUserLocationTracking() {
       const lng = pos.coords.longitude;
       const accuracy = Math.round(pos.coords.accuracy || 10);
       state.userLocation = { lat, lng };
+
+      // Reactive update: if facility directions were requested and waiting for GPS, or actively in GPS mode
+      if (state.selectedFacility && (state._facilityRoutePendingGps || state._facilityRouteMode === 'gps')) {
+        state._facilityRoutePendingGps = false;
+        displayFacilityRoute(state.selectedFacility, 'gps');
+      } else if (state.selectedFacility && facilityStartMarker && state._facilityRouteMode === 'gps') {
+        facilityStartMarker.setLatLng([lat, lng]);
+      }
 
       if (map) {
         if (!userMarker) {

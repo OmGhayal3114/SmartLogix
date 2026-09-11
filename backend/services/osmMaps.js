@@ -273,6 +273,70 @@ async function getWaypointRoute(origin, waypoint, destination, vehicleType = 'Tr
 }
 
 /**
+ * Calculates direct road route from start point (User GPS or corridor point) to target facility.
+ */
+async function getDirectRoute(start, destination, vehicleType = 'Truck') {
+  const [startPoint, destPoint] = await Promise.all([
+    typeof start === 'object' && start.lat ? start : geocode(start),
+    typeof destination === 'object' && destination.lat ? destination : geocode(destination)
+  ]);
+
+  const coords = `${startPoint.lng},${startPoint.lat};${destPoint.lng},${destPoint.lat}`;
+  try {
+    const response = await http.get(`${OSRM_URL}/${coords}`, {
+      params: { overview: 'full', geometries: 'geojson', steps: 'true' }
+    });
+
+    if (response.data?.code === 'Ok' && response.data.routes?.[0]?.geometry) {
+      const route = response.data.routes[0];
+      const leg = route.legs?.[0] || {};
+      return {
+        summary: `Direct route to ${destPoint.name || 'Facility'}`,
+        distance: `${((route.distance || 0) / 1000).toFixed(1)} km`,
+        distanceValue: Math.round(route.distance || 0),
+        duration: formatDuration(route.duration || 0),
+        durationValue: Math.round(route.duration || 0),
+        origin: startPoint,
+        destination: destPoint,
+        geometry: route.geometry,
+        legs: route.legs || [],
+        steps: (leg.steps || []).map(formatStep).slice(0, 30),
+        vehicleType
+      };
+    }
+  } catch (err) {
+    console.warn('[Direct Route] OSRM query failed, using geometric fallback:', err.message);
+  }
+
+  // Geometric fallback so the user always sees a visible route even if OSRM is unreachable
+  const dMeters = distanceMeters(startPoint.lat, startPoint.lng, destPoint.lat, destPoint.lng);
+  const estSeconds = Math.max(60, Math.round((dMeters / 1000) / 40 * 3600)); // 40 km/h avg
+  return {
+    summary: `Direct path to ${destPoint.name || 'Facility'}`,
+    distance: dMeters >= 1000 ? `${(dMeters / 1000).toFixed(1)} km` : `${Math.round(dMeters)} m`,
+    distanceValue: Math.round(dMeters),
+    duration: formatDuration(estSeconds),
+    durationValue: estSeconds,
+    origin: startPoint,
+    destination: destPoint,
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [startPoint.lng, startPoint.lat],
+        [destPoint.lng, destPoint.lat]
+      ]
+    },
+    legs: [{
+      distance: dMeters >= 1000 ? `${(dMeters / 1000).toFixed(1)} km` : `${Math.round(dMeters)} m`,
+      duration: formatDuration(estSeconds),
+      steps: []
+    }],
+    steps: [`1. Follow direct road connection to ${destPoint.name || 'Facility'}`],
+    vehicleType
+  };
+}
+
+/**
  * Known regional bypass and alternate corridors across the North Eastern Region.
  * When a primary hill/river highway has HIGH risk (severe rain/landslides/floods),
  * these provide safer alternate logistics corridors.
@@ -743,6 +807,7 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
 module.exports = {
   getRoutes,
   getWaypointRoute,
+  getDirectRoute,
   findAlternateSafetyRoute,
   formatDuration,
   getFacilitiesAlongRoute,
