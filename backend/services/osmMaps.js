@@ -654,12 +654,7 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
         };
       })
       .filter(Boolean)
-      .sort((a, b) => {
-        if (a.distanceFromUser != null && b.distanceFromUser != null) {
-          return a.distanceFromUser - b.distanceFromUser;
-        }
-        return a.distanceMeters - b.distanceMeters;
-      });
+      .sort((a, b) => a.distanceMeters - b.distanceMeters);
 
     for (const item of sorted) {
       if (seen.has(item.placeId)) continue;
@@ -671,12 +666,7 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     }
 
     if (facilities.length > 0) {
-      facilities.sort((a, b) => {
-        if (a.distanceFromUser != null && b.distanceFromUser != null) {
-          return a.distanceFromUser - b.distanceFromUser;
-        }
-        return a.distanceMeters - b.distanceMeters;
-      });
+      facilities.sort((a, b) => a.distanceMeters - b.distanceMeters);
       cache.facilities.set(cacheKey, facilities);
       return facilities;
     }
@@ -686,8 +676,8 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
 
   // --- Fallback: parallel Photon searches per facility type (excluding ATM) ---
   try {
-    const midLat = userLoc && userLoc.lat ? (userLoc.lat + destinationPoint.lat) / 2 : (originPoint.lat + destinationPoint.lat) / 2;
-    const midLng = userLoc && userLoc.lng ? (userLoc.lng + destinationPoint.lng) / 2 : (originPoint.lng + destinationPoint.lng) / 2;
+    const midLat = (originPoint.lat + destinationPoint.lat) / 2;
+    const midLng = (originPoint.lng + destinationPoint.lng) / 2;
 
     const photonSearches = [
       { q: 'hospital clinic', type: 'hospital', name: 'Hospital' },
@@ -718,9 +708,6 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
             if (!seenFallback.has(id)) {
               seenFallback.add(id);
               const dist = minDistToRoute(lat, lng);
-              const distFromUser = (userLoc && userLoc.lat && userLoc.lng)
-                ? distanceMeters(lat, lng, userLoc.lat, userLoc.lng)
-                : null;
               if (dist <= 50000) {
                 const address = [p.street, p.city || p.district, p.state].filter(Boolean).join(', ');
                 fallbackResults.push({
@@ -731,7 +718,6 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
                   address: address || 'Along Highway Corridor',
                   coordinates: { lat, lng },
                   distanceMeters: dist,
-                  distanceFromUser: distFromUser,
                   openingHours: null, phone: null, website: null,
                   source: 'OpenStreetMap'
                 });
@@ -743,12 +729,7 @@ async function getFacilitiesAlongRoute(origin, destination, types = [
     }));
 
     if (fallbackResults.length > 0) {
-      fallbackResults.sort((a, b) => {
-        if (a.distanceFromUser != null && b.distanceFromUser != null) {
-          return a.distanceFromUser - b.distanceFromUser;
-        }
-        return a.distanceMeters - b.distanceMeters;
-      });
+      fallbackResults.sort((a, b) => a.distanceMeters - b.distanceMeters);
       cache.facilities.set(cacheKey, fallbackResults);
       return fallbackResults;
     }

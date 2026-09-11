@@ -443,12 +443,11 @@ export function addFacilityMarkers(facilities) {
           <span style="font-size:10px;font-weight:bold;background:${color}22;color:${color};border:1px solid ${color}44;padding:2px 6px;border-radius:4px;white-space:nowrap">${escapeHtml(label)}</span>
         </div>
         <div style="color:#94a3b8;font-size:11px;margin-top:6px;line-height:1.4">${escapeHtml(f.address)}</div>
-        ${userGpsBadge}
-        <div style="color:#5eead4;font-size:11px;margin-top:2px">📍 ${distText} off route corridor</div>
+        <div style="color:#5eead4;font-size:11px;margin-top:4px">📍 ${distText} off route corridor</div>
         ${details.length > 0 ? `<div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid #ffffff15;display:flex;flex-direction:column;gap:3px">${details.join('')}</div>` : ''}
         <div style="margin-top:12px">
           <button onclick="window.getDirectionsToFacility('${f.placeId || f.id}')" style="background:#14b8a6;color:#040a12;border:none;width:100%;padding:7px 12px;border-radius:6px;font-weight:bold;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <span>🧭</span> Navigate from GPS
+            <span>🧭</span> Get Directions
           </button>
         </div>
       </div>
