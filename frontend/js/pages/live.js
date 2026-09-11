@@ -52,15 +52,7 @@ export function renderLivePage() {
 
     <!-- OpenStreetMap Leaflet interactive container -->
     <div id="osm-map" style="height:480px;border-radius:12px;border:1px solid #2dd4bf26;background:#040a12;position:relative;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.6);z-index:0">
-      ${state.loadingMap
-        ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#040a12;z-index:10">
-             <div style="text-align:center;color:var(--teal)">
-               <div style="font-size:32px;margin-bottom:10px">◎</div>
-               ${t('live.loadingMap') || 'Loading OpenStreetMap navigation…'}
-             </div>
-           </div>`
-        : ''}
-      <div style="position:absolute;left:14px;bottom:14px;z-index:5;background:#07111fee;border:1px solid #2dd4bf44;border-radius:8px;padding:10px 14px;color:#cbd5e1;font-size:11px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,0.5)">
+      <div style="position:absolute;left:14px;bottom:14px;z-index:500;background:#07111fee;border:1px solid #2dd4bf44;border-radius:8px;padding:10px 14px;color:#cbd5e1;font-size:11px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,0.5)">
         <div id="location-status" style="font-weight:500">Live GPS ready</div>
         <div style="margin-top:6px;display:flex;justify-content:space-between;gap:12px">
           <span>Remaining: <b id="remaining-distance" style="color:#ffffff">${state.remainingDistance || '—'}</b></span>
@@ -209,38 +201,38 @@ export function renderLivePage() {
 export async function initLiveNetwork() {
   if (!state.selectedRoute) return;
 
-  // Only fetch ML risk if not already available in state/selectedRoute
-  if (!state.selectedRoute.risk && !state.mlRisk) {
-    try {
-      const riskData = await api.getRouteRisk({
-        origin: state.origin,
-        destination: state.destination,
-        vehicleType: state.vehicleType
-      });
-      state.mlRisk = riskData;
-    } catch (_) {}
-  } else if (state.selectedRoute.risk && !state.mlRisk) {
+  state.loadingMap = false;
+  state.loadingRisk = false;
+
+  if (state.selectedRoute.risk && !state.mlRisk) {
     state.mlRisk = state.selectedRoute.risk;
   }
 
-  // Single render pass — risk data is already in state
-  state.loadingMap = false;
-  state.loadingRisk = false;
-  window.render();
+  // Background risk loading if not already cached
+  if (!state.selectedRoute.risk && !state.mlRisk) {
+    api.getRouteRisk({
+      origin: state.origin,
+      destination: state.destination,
+      vehicleType: state.vehicleType
+    }).then(riskData => {
+      state.mlRisk = riskData;
+    }).catch(() => {});
+  }
 
-  // Initialize map AFTER the DOM is painted — never re-render after this point
-  setTimeout(async () => {
-    const oMap = await initMap('osm-map');
-    if (oMap) {
-      oMap.invalidateSize(true);
-      displayRoute(state.selectedRoute);
-      startUserLocationTracking();
-      if (state.selectedFacility) {
-        const { displayFacilityRoute } = await import('../maps.js');
-        displayFacilityRoute(state.selectedFacility);
-      }
+  // Ensure DOM container is mounted and ready
+  const mapElement = document.getElementById('osm-map');
+  if (!mapElement) return;
+
+  const oMap = await initMap('osm-map');
+  if (oMap) {
+    oMap.invalidateSize(true);
+    displayRoute(state.selectedRoute);
+    startUserLocationTracking();
+    if (state.selectedFacility) {
+      const { displayFacilityRoute } = await import('../maps.js');
+      displayFacilityRoute(state.selectedFacility);
     }
-  }, 150);
+  }
 }
 
 
@@ -286,6 +278,6 @@ window.switchLiveRoute = async (idx) => {
   notify(`Switched to: ${route.summary}`, 'success');
   const { displayRoute } = await import('../maps.js');
   displayRoute(route);
-  window.render();
+  await window.render();
 };
 

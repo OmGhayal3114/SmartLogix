@@ -546,16 +546,24 @@ window.selectRoute = async (index) => {
   state.selectedFacility = null;
   state._originalMainRoute = route;
 
+  if (route.risk) {
+    state.mlRisk = route.risk;
+  }
+  state.loadingMap = false;
+  state.loadingRisk = false;
+
   // Pass analyzed risk segments to state for map visualization
   if (window._routeRiskCache && window._routeRiskCache[index]?.segments) {
     state.activeRiskSegments = window._routeRiskCache[index].segments;
+  } else if (route.risk?.segments) {
+    state.activeRiskSegments = route.risk.segments;
   } else {
     state.activeRiskSegments = null;
   }
 
   notify(`Route selected: ${route.summary}`, 'success');
   const { go } = await import('../router.js');
-  go('Live Network');
+  await go('Live Network');
 };
 
 // Automatically attach OpenStreetMap / Photon Autocomplete on render

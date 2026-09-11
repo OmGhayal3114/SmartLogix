@@ -34,10 +34,23 @@ const LANGUAGES = [
   { code: 'kok', label: 'Kokborok' }
 ];
 
+let toastTimer = null;
 export function notify(message, type = 'success') {
   state.toast = { message, type };
-  render();
-  setTimeout(() => { state.toast = { message: '', type: 'success' }; render(); }, 3000);
+  let slot = document.getElementById('toast-slot');
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.id = 'toast-slot';
+    document.body.appendChild(slot);
+  }
+  slot.innerHTML = toastEl();
+
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    state.toast = { message: '', type: 'success' };
+    const s = document.getElementById('toast-slot');
+    if (s) s.innerHTML = '';
+  }, 3000);
 }
 
 function sidebar() {
@@ -169,20 +182,39 @@ async function pageContent() {
 }
 
 
+let isRendering = false;
+let renderPending = false;
+
 export async function render() {
-  const content = await pageContent();
-  const app = document.getElementById('app');
-  if (!app) return;
+  if (isRendering) {
+    renderPending = true;
+    return;
+  }
+  isRendering = true;
 
-  app.innerHTML =
-    mobileHeader() +
-    sidebar() +
-    `<main>${topbar()}<div id="page-content">${content}</div></main>` +
-    toastEl() +
-    renderAuthModal();
+  try {
+    const content = await pageContent();
+    const app = document.getElementById('app');
+    if (!app) return;
 
-  if (state.page === 'Plan Trip') {
-    import('./pages/plan.js').then(m => m.initPlanPage && m.initPlanPage());
+    app.innerHTML =
+      mobileHeader() +
+      sidebar() +
+      `<main>${topbar()}<div id="page-content">${content}</div></main>` +
+      `<div id="toast-slot">${toastEl()}</div>` +
+      renderAuthModal();
+
+    if (state.page === 'Plan Trip') {
+      import('./pages/plan.js').then(m => m.initPlanPage && m.initPlanPage());
+    } else if (state.page === 'Live Network') {
+      import('./pages/live.js').then(m => m.initLiveNetwork && m.initLiveNetwork());
+    }
+  } finally {
+    isRendering = false;
+    if (renderPending) {
+      renderPending = false;
+      render();
+    }
   }
 }
 

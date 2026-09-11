@@ -15,6 +15,7 @@ let riskZonesLayerGroup = null;
 let facilityTargetMarker = null;
 let facilityStartMarker = null;
 let locationWatchId = null;
+let mapResizeObserver = null;
 
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, c =>
@@ -162,38 +163,68 @@ function createFacilityIcon(color, symbol) {
 }
 
 /**
+ * Completely tears down the Leaflet map instance, layers, and observers.
+ */
+export function destroyMap() {
+  stopUserLocationTracking();
+  if (mapResizeObserver) {
+    mapResizeObserver.disconnect();
+    mapResizeObserver = null;
+  }
+  if (map) {
+    try {
+      map.remove();
+    } catch (_) {}
+    map = null;
+  }
+  mainRouteLayer = null;
+  detourRouteLayer = null;
+  originMarker = null;
+  destinationMarker = null;
+  userMarker = null;
+  userAccuracyCircle = null;
+  facilityMarkersGroup = null;
+  alertMarkersGroup = null;
+  riskZonesLayerGroup = null;
+  facilityTargetMarker = null;
+  facilityStartMarker = null;
+}
+window.destroyMap = destroyMap;
+
+/**
  * Initializes interactive OpenStreetMap inside container using Leaflet.
- * Detects if Leaflet is already mounted on the same DOM element and reuses
- * it — prevents the map from going blank when window.render() is called.
+ * Validates container visibility, handles mounting lifecycle, reuses or
+ * recreates instances cleanly, and observes container size changes.
  */
 export async function initMap(containerId = 'osm-map') {
   let element = document.getElementById(containerId);
   if (!element) {
     element = document.getElementById('google-map') || document.getElementById('map');
   }
-  if (!element) return null;
+  if (!element || !document.body.contains(element)) return null;
 
   await ensureLeafletLoaded();
 
-  // If Leaflet is already mounted on this exact DOM element, reuse it.
-  // This prevents the map from going blank after window.render() re-creates the div.
-  if (map && element._leaflet_id) {
+  // Re-check container in case DOM changed during async Leaflet loading
+  element = document.getElementById(containerId) || document.getElementById('google-map') || document.getElementById('map');
+  if (!element || !document.body.contains(element)) return null;
+
+  // If Leaflet is already mounted on this exact DOM element, reuse it
+  if (map && element._leaflet_id && map.getContainer() === element) {
     try {
       map.invalidateSize(true);
-      // Restore layers if they were lost
       if (mainRouteLayer && !map.hasLayer(mainRouteLayer)) mainRouteLayer.addTo(map);
       if (facilityMarkersGroup && !map.hasLayer(facilityMarkersGroup)) facilityMarkersGroup.addTo(map);
       if (alertMarkersGroup && !map.hasLayer(alertMarkersGroup)) alertMarkersGroup.addTo(map);
+      if (riskZonesLayerGroup && !map.hasLayer(riskZonesLayerGroup)) riskZonesLayerGroup.addTo(map);
     } catch (_) {}
     return map;
   }
 
-  // DOM was re-rendered — clean up stale instance and create fresh map
-  if (map) {
-    try { map.remove(); } catch (_) {}
-    map = null;
-  }
-  // Clear any leftover Leaflet markup from a stale instance
+  // Clean up any previous stale map instance
+  destroyMap();
+
+  // Clear any leftover DOM and Leaflet state
   element.innerHTML = '';
   delete element._leaflet_id;
 
@@ -206,16 +237,11 @@ export async function initMap(containerId = 'osm-map') {
     zoomControl: false // custom position
   });
 
-
-  // Official OpenStreetMap tiles (natural green landscape, zero API key required)
+  // Official OpenStreetMap tiles
   const osmTiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
   }).addTo(map);
-
-  // Force Leaflet to recalculate container size (fixes blank map on first load)
-  setTimeout(() => { try { map.invalidateSize(true); } catch(_) {} }, 50);
-  setTimeout(() => { try { map.invalidateSize(true); } catch(_) {} }, 300);
 
   // Fallback to OSM Humanitarian tiles if needed
   osmTiles.on('tileerror', () => {
@@ -233,6 +259,27 @@ export async function initMap(containerId = 'osm-map') {
   facilityMarkersGroup = L.layerGroup().addTo(map);
   alertMarkersGroup = L.layerGroup().addTo(map);
   riskZonesLayerGroup = L.layerGroup().addTo(map);
+
+  // ResizeObserver ensures Leaflet updates whenever container layout or transition completes
+  if (window.ResizeObserver) {
+    if (mapResizeObserver) {
+      mapResizeObserver.disconnect();
+    }
+    mapResizeObserver = new ResizeObserver(() => {
+      if (map) {
+        try { map.invalidateSize(false); } catch (_) {}
+      }
+    });
+    mapResizeObserver.observe(element);
+  }
+
+  // Staggered size recalculations to handle post-navigation layout settlements
+  requestAnimationFrame(() => {
+    try { if (map) map.invalidateSize(true); } catch (_) {}
+  });
+  setTimeout(() => { try { if (map) map.invalidateSize(true); } catch(_) {} }, 100);
+  setTimeout(() => { try { if (map) map.invalidateSize(true); } catch(_) {} }, 300);
+  setTimeout(() => { try { if (map) map.invalidateSize(true); } catch(_) {} }, 600);
 
   // Floating "Center on My Location" control button
   const floatingCtrl = document.createElement('div');
@@ -351,6 +398,7 @@ export function displayRoute(route) {
 
   // Fit camera bounds with padding
   try {
+    map.invalidateSize(false);
     map.fitBounds(mainRouteLayer.getBounds(), { padding: [40, 40] });
   } catch (_) {}
 

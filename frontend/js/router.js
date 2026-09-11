@@ -2,7 +2,15 @@
 
 import { state } from './state.js';
 
-export function go(page) {
+export async function go(page) {
+  // If navigating away from Live Network, cleanly destroy map instance
+  if (state.page === 'Live Network' && page !== 'Live Network') {
+    try {
+      const { destroyMap } = await import('./maps.js');
+      destroyMap();
+    } catch (_) {}
+  }
+
   // Auth guard for My Trip
   if (page === 'My Trip' && !state.user) {
     window.openAuth('login');
@@ -14,7 +22,7 @@ export function go(page) {
   if (page === 'Alerts' && (!state.top10Alerts || state.top10Alerts.length === 0)) {
     state.loadingAlerts = true;
   }
-  window.render();
+  await window.render();
 
   // Trigger page-specific data loading
   if (page === 'Plan Trip') {
