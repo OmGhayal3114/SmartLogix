@@ -209,17 +209,19 @@ export function renderLivePage() {
 export async function initLiveNetwork() {
   if (!state.selectedRoute) return;
 
-  // Fetch ML risk BEFORE any render so we don't re-render after the map is alive
-  try {
-    const riskData = await api.getRouteRisk({
-      origin: state.origin,
-      destination: state.destination,
-      vehicleType: state.vehicleType
-    });
-    if (!state.selectedRoute.risk) {
+  // Only fetch ML risk if not already available in state/selectedRoute
+  if (!state.selectedRoute.risk && !state.mlRisk) {
+    try {
+      const riskData = await api.getRouteRisk({
+        origin: state.origin,
+        destination: state.destination,
+        vehicleType: state.vehicleType
+      });
       state.mlRisk = riskData;
-    }
-  } catch (_) {}
+    } catch (_) {}
+  } else if (state.selectedRoute.risk && !state.mlRisk) {
+    state.mlRisk = state.selectedRoute.risk;
+  }
 
   // Single render pass — risk data is already in state
   state.loadingMap = false;

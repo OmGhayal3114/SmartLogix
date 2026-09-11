@@ -369,18 +369,24 @@ export function addFacilityMarkers(facilities) {
 
   const TYPE_COLOR = {
     hospital: '#ef4444',
-    lodging: '#fb923c',
+    pharmacy: '#38bdf8',
+    police: '#60a5fa',
+    atm: '#34d399',
     gas_station: '#5eead4',
+    lodging: '#fb923c',
     car_repair: '#fbbf24',
     parking: '#94a3b8',
     restaurant: '#a78bfa',
-    restroom: '#38bdf8'
+    restroom: '#2dd4bf'
   };
 
   const TYPE_SYMBOL = {
     hospital: '🏥',
-    lodging: '🏨',
+    pharmacy: '💊',
+    police: '🚓',
+    atm: '🏧',
     gas_station: '⛽',
+    lodging: '🏨',
     car_repair: '🔧',
     parking: '🅿️',
     restaurant: '🍴',
@@ -388,13 +394,16 @@ export function addFacilityMarkers(facilities) {
   };
 
   const TYPE_LABEL = {
-    hospital: 'Hospital',
-    lodging: 'Hotel / Lodge',
+    hospital: 'Hospital / Clinic',
+    pharmacy: 'Pharmacy / Medical',
+    police: 'Police Station',
+    atm: 'ATM / Banking',
     gas_station: 'Petrol Pump',
-    car_repair: 'Vehicle Repair',
-    parking: 'Parking',
+    lodging: 'Hotel / Lodge',
+    car_repair: 'Vehicle Repair / Garage',
+    parking: 'Parking & Rest Area',
     restaurant: 'Restaurant / Dhaba',
-    restroom: 'Restroom'
+    restroom: 'Public Restroom'
   };
 
   facilities.forEach(f => {
@@ -442,6 +451,7 @@ export function addFacilityMarkers(facilities) {
 
 /**
  * Calculates road detour route to a selected facility.
+ * Uses current user GPS direction / position when available, falling back to trip corridor origin.
  */
 export async function displayFacilityRoute(facility) {
   if (!map || !facility?.coordinates) return;
@@ -452,30 +462,58 @@ export async function displayFacilityRoute(facility) {
   }
   state.selectedFacility = facility;
 
-  // Always use the planned route's origin as the start point for facility directions.
-  // Never use userLocation (device GPS) — the detour is relative to the trip, not the physical device position.
-  let startLat, startLng;
+  const destLat = facility.coordinates.lat;
+  const destLng = facility.coordinates.lng;
 
-  if (state.selectedRoute?.origin?.lat) {
-    // Use the geocoded origin from the OSRM route result
+  // Prioritize current user GPS direction/position if active
+  let startLat = null;
+  let startLng = null;
+  let startLabel = 'Current Location';
+  let isUserGps = false;
+
+  if (state.userLocation && state.userLocation.lat && state.userLocation.lng) {
+    startLat = state.userLocation.lat;
+    startLng = state.userLocation.lng;
+    startLabel = 'Your Current GPS Location';
+    isUserGps = true;
+  } else if (state.selectedRoute?.origin?.lat) {
     startLat = state.selectedRoute.origin.lat;
     startLng = state.selectedRoute.origin.lng;
+    startLabel = state.selectedRoute.startAddress || state.origin || 'Trip Origin';
   } else if (state.selectedRoute?.geometry?.coordinates?.[0]) {
-    // Fall back to the first coordinate of the route geometry
     startLat = state.selectedRoute.geometry.coordinates[0][1];
     startLng = state.selectedRoute.geometry.coordinates[0][0];
+    startLabel = state.selectedRoute.startAddress || state.origin || 'Corridor Origin';
   }
 
   if (!startLat || !startLng) return;
 
-  const destLat = facility.coordinates.lat;
-  const destLng = facility.coordinates.lng;
-
   try {
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
-    const resp = await fetch(osrmUrl);
-    const data = await resp.json();
-    const route = data.routes?.[0];
+    let route = null;
+
+    // 1. Try road route from start point
+    try {
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+      const resp = await fetch(osrmUrl);
+      const data = await resp.json();
+      if (data.code === 'Ok' && data.routes?.[0]?.geometry) {
+        route = data.routes[0];
+      }
+    } catch (_) {}
+
+    // 2. If GPS is remote / cross-continent where OSRM cannot connect, fall back to trip origin
+    if (!route && isUserGps && state.selectedRoute?.origin?.lat) {
+      startLat = state.selectedRoute.origin.lat;
+      startLng = state.selectedRoute.origin.lng;
+      startLabel = state.selectedRoute.startAddress || state.origin || 'Trip Origin';
+
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+      const resp = await fetch(osrmUrl);
+      const data = await resp.json();
+      if (data.code === 'Ok' && data.routes?.[0]?.geometry) {
+        route = data.routes[0];
+      }
+    }
 
     if (!route || !route.geometry) {
       throw new Error('No drivable road route found to this facility.');
@@ -487,12 +525,12 @@ export async function displayFacilityRoute(facility) {
       detourRouteLayer = null;
     }
 
-    // Dim main route
+    // Dim main route for clear visual focus on the facility route
     if (mainRouteLayer) {
-      mainRouteLayer.setStyle({ opacity: 0.3, weight: 4 });
+      mainRouteLayer.setStyle({ opacity: 0.25, weight: 4 });
     }
 
-    // Draw detour route in bright orange
+    // Draw detour route in vibrant high-visibility orange
     detourRouteLayer = L.geoJSON(route.geometry, {
       style: {
         color: '#fb923c',
@@ -503,8 +541,18 @@ export async function displayFacilityRoute(facility) {
       }
     }).addTo(map);
 
-    // Fit view to detour route
-    map.fitBounds(detourRouteLayer.getBounds(), { padding: [40, 40] });
+    // Fit view to detour route with comfortable padding
+    map.fitBounds(detourRouteLayer.getBounds(), { padding: [50, 50] });
+
+    // Open popup for the target facility marker
+    if (facilityMarkersGroup) {
+      facilityMarkersGroup.eachLayer(layer => {
+        const pos = layer.getLatLng && layer.getLatLng();
+        if (pos && Math.abs(pos.lat - destLat) < 0.0008 && Math.abs(pos.lng - destLng) < 0.0008) {
+          layer.openPopup();
+        }
+      });
+    }
 
     // Format metrics
     const distText = route.distance >= 1000
@@ -520,16 +568,21 @@ export async function displayFacilityRoute(facility) {
       infoEl.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
           <div>
-            <b style="color:#fb923c">Detour to ${escapeHtml(facility.name)}</b>
-            <div style="color:#cbd5e1;font-size:11px">${distText} · ${durText} via road</div>
+            <b style="color:#fb923c">🧭 Route to ${escapeHtml(facility.name)}</b>
+            <div style="color:#cbd5e1;font-size:11px">
+              From: <span style="color:#5eead4">${escapeHtml(startLabel)}</span> · ${distText} · ${durText}
+            </div>
           </div>
-          <div style="display:flex;gap:6px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
             <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:#040a12;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold" title="Route: Origin -> Facility -> Final Destination">
               + Add as Waypoint
             </button>
             <button onclick="window.returnToMainRoute()" style="background:#0f172a;color:#5eead4;border:1px solid #14b8a6;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold">
               ← Direct Route
             </button>
+            <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:#1e293b;color:#38bdf8;border:1px solid #38bdf844;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:inline-flex;align-items:center;gap:4px">
+              ↗ Google Maps
+            </a>
           </div>
         </div>
       `;
@@ -629,12 +682,18 @@ export function returnToMainRoute() {
 window.returnToMainRoute = returnToMainRoute;
 
 // Global hook for facility marker clicks
-window.getDirectionsToFacility = (id) => {
+window.getDirectionsToFacility = async (id) => {
   const facility = (state.facilities || []).find(f => f.placeId === id || f.id === id);
-  if (facility) {
+  if (!facility) return;
+  state.selectedFacility = facility;
+  if (state.page !== 'Live Network') {
+    const { go } = await import('./router.js');
+    go('Live Network');
+  } else {
     displayFacilityRoute(facility);
   }
 };
+window.displayFacilityRoute = displayFacilityRoute;
 
 /**
  * Starts live high-accuracy GPS tracking with pulsating user marker.

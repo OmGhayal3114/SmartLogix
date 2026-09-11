@@ -496,7 +496,9 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
  * @param {string[]} types - Facility type filters
  * @param {Array} routeCoords - GeoJSON [lng,lat] coordinate array from OSRM geometry (up to 20 thinned points)
  */
-async function getFacilitiesAlongRoute(origin, destination, types = ['hospital', 'lodging', 'gas_station', 'car_repair', 'parking', 'restaurant'], routeCoords = []) {
+async function getFacilitiesAlongRoute(origin, destination, types = [
+  'hospital', 'pharmacy', 'police', 'atm', 'gas_station', 'lodging', 'car_repair', 'parking', 'restaurant', 'restroom'
+], routeCoords = []) {
   const cacheKey = `${origin}->${destination}->${[...types].sort().join(',')}`;
   if (cache.facilities.has(cacheKey)) {
     return cache.facilities.get(cacheKey);
@@ -533,11 +535,14 @@ async function getFacilitiesAlongRoute(origin, destination, types = ['hospital',
 
   // Build ONE bounding-box Overpass query with all facility types
   const clauses = [];
-  if (wanted.has('hospital'))    clauses.push('nwr["amenity"="hospital"]');
-  if (wanted.has('lodging'))     clauses.push('nwr["tourism"~"hotel|motel|guest_house"]');
+  if (wanted.has('hospital'))    clauses.push('nwr["amenity"~"hospital|clinic"]');
+  if (wanted.has('pharmacy'))    clauses.push('nwr["amenity"="pharmacy"]', 'nwr["healthcare"="pharmacy"]', 'nwr["shop"="chemist"]');
+  if (wanted.has('police'))      clauses.push('nwr["amenity"="police"]');
+  if (wanted.has('atm'))         clauses.push('nwr["amenity"~"atm|bank"]');
   if (wanted.has('gas_station')) clauses.push('nwr["amenity"="fuel"]');
-  if (wanted.has('car_repair'))  clauses.push('nwr["shop"="car_repair"]', 'nwr["craft"="car_repair"]');
-  if (wanted.has('parking'))     clauses.push('nwr["amenity"="parking"]');
+  if (wanted.has('lodging'))     clauses.push('nwr["tourism"~"hotel|motel|guest_house|hostel"]');
+  if (wanted.has('car_repair'))  clauses.push('nwr["shop"~"car_repair|tyres"]', 'nwr["craft"="car_repair"]');
+  if (wanted.has('parking'))     clauses.push('nwr["amenity"="parking"]', 'nwr["highway"="rest_area"]');
   if (wanted.has('restaurant'))  clauses.push('nwr["amenity"~"restaurant|fast_food|cafe"]');
   if (wanted.has('restroom'))    clauses.push('nwr["amenity"="toilets"]');
 
@@ -548,6 +553,9 @@ async function getFacilitiesAlongRoute(origin, destination, types = ['hospital',
 
   const defaultNames = {
     hospital:    'Hospital / Health Center',
+    pharmacy:    'Pharmacy / Medical Store',
+    police:      'Police Station / Outpost',
+    atm:         'ATM / Banking Facility',
     gas_station: 'Petrol Pump',
     lodging:     'Hotel / Lodge',
     car_repair:  'Auto Repair / Garage',
@@ -557,14 +565,17 @@ async function getFacilitiesAlongRoute(origin, destination, types = ['hospital',
   };
 
   function classifyElement(tags) {
-    if (tags.amenity === 'hospital') return 'hospital';
+    if (['hospital', 'clinic'].includes(tags.amenity)) return 'hospital';
+    if (tags.amenity === 'pharmacy' || tags.healthcare === 'pharmacy' || tags.shop === 'chemist') return 'pharmacy';
+    if (tags.amenity === 'police') return 'police';
+    if (['atm', 'bank'].includes(tags.amenity)) return 'atm';
     if (tags.amenity === 'fuel') return 'gas_station';
-    if (tags.shop === 'car_repair' || tags.craft === 'car_repair') return 'car_repair';
-    if (tags.amenity === 'parking') return 'parking';
+    if (tags.shop === 'car_repair' || tags.shop === 'tyres' || tags.craft === 'car_repair') return 'car_repair';
+    if (tags.amenity === 'parking' || tags.highway === 'rest_area') return 'parking';
     if (['restaurant', 'fast_food', 'cafe'].includes(tags.amenity)) return 'restaurant';
     if (tags.amenity === 'toilets') return 'restroom';
     if (tags.tourism) return 'lodging';
-    return 'lodging';
+    return null;
   }
 
   function minDistToRoute(lat, lng) {
@@ -581,18 +592,18 @@ async function getFacilitiesAlongRoute(origin, destination, types = ['hospital',
     const elements = response.data?.elements || [];
 
     const seen = new Set();
-    // Per-type count cap: max 8 per category to ensure balanced results
+    // Per-type count cap: max 8 per category to ensure balanced results across all types
     const typeCount = {};
     const PER_TYPE_MAX = 8;
 
     const facilities = [];
-    // Sort by type to distribute evenly before applying cap
     const sorted = elements
       .map(el => {
         const point = elementPoint(el);
         if (!point[0] || !point[1]) return null;
         const tags = el.tags || {};
         const facilityType = classifyElement(tags);
+        if (!facilityType || !wanted.has(facilityType)) return null;
         const dist = minDistToRoute(point[0], point[1]);
         const address = [tags['addr:street'], tags['addr:city'] || tags['addr:district'], tags['addr:postcode']]
           .filter(Boolean).join(', ');
@@ -624,7 +635,6 @@ async function getFacilitiesAlongRoute(origin, destination, types = ['hospital',
     }
 
     if (facilities.length > 0) {
-      // Sort final list by distance so closest facilities come first
       facilities.sort((a, b) => a.distanceMeters - b.distanceMeters);
       cache.facilities.set(cacheKey, facilities);
       return facilities;
@@ -639,12 +649,16 @@ async function getFacilitiesAlongRoute(origin, destination, types = ['hospital',
     const midLng = (originPoint.lng + destinationPoint.lng) / 2;
 
     const photonSearches = [
-      { q: 'hospital',   type: 'hospital',    name: 'Hospital' },
-      { q: 'fuel petrol',type: 'gas_station',  name: 'Petrol Pump' },
-      { q: 'hotel',      type: 'lodging',      name: 'Hotel / Lodge' },
-      { q: 'car repair', type: 'car_repair',   name: 'Garage / Repair' },
-      { q: 'restaurant', type: 'restaurant',   name: 'Restaurant / Dhaba' },
-      { q: 'parking',    type: 'parking',      name: 'Parking' }
+      { q: 'hospital clinic', type: 'hospital', name: 'Hospital' },
+      { q: 'pharmacy chemist medical', type: 'pharmacy', name: 'Pharmacy' },
+      { q: 'police station thana outpost', type: 'police', name: 'Police Station' },
+      { q: 'atm bank cash', type: 'atm', name: 'ATM / Banking' },
+      { q: 'fuel petrol diesel', type: 'gas_station', name: 'Petrol Pump' },
+      { q: 'hotel lodge guest house', type: 'lodging', name: 'Hotel / Lodge' },
+      { q: 'car repair garage mechanic', type: 'car_repair', name: 'Garage / Repair' },
+      { q: 'restaurant dhaba food', type: 'restaurant', name: 'Restaurant / Dhaba' },
+      { q: 'parking truck rest', type: 'parking', name: 'Parking' },
+      { q: 'public toilet restroom', type: 'restroom', name: 'Public Restroom' }
     ].filter(s => wanted.has(s.type));
 
     const seenFallback = new Set();

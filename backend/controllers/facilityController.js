@@ -12,9 +12,22 @@ exports.getFacilitiesNearRoute = async (req, res, next) => {
       return res.status(400).json({ error: 'Origin and destination are required.' });
     }
 
+    const ALL_CATEGORIES = [
+      'hospital',
+      'pharmacy',
+      'police',
+      'atm',
+      'gas_station',
+      'lodging',
+      'car_repair',
+      'parking',
+      'restaurant',
+      'restroom'
+    ];
+
     const facilityTypes = rawTypes
       ? (Array.isArray(rawTypes) ? rawTypes : rawTypes.split(','))
-      : ['hospital', 'lodging', 'gas_station', 'car_repair', 'parking', 'restaurant'];
+      : ALL_CATEGORIES;
 
     const facilities = await mapsService.getFacilitiesAlongRoute(
       origin,
