@@ -8,15 +8,42 @@
   --border: #ffffff10;
   --text: #e8edf5;
   --muted: #64748b;
-  --teal: #5eead4;
+  --teal: #0d9488;
   --orange: #fb923c;
   --red: #ef4444;
-  --green: #34d399;
+  --green: #16a34a;
   --sidebar-width: 256px;
   --topbar-height: 64px;
+  --topbar-bg: rgba(11, 15, 26, 0.92);
+  --input-bg: #0b0f1a;
+  --shadow: rgba(0,0,0,0.5);
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ===== LIGHT THEME ===== */
+body.light {
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --panel: #e2e8f0;
+  --border: #00000014;
+  --text: #0f172a;
+  --muted: #64748b;
+  --teal: #0d9488;
+  --orange: #ea580c;
+  --red: #dc2626;
+  --green: #16a34a;
+  --topbar-bg: rgba(241, 245, 249, 0.95);
+  --input-bg: #ffffff;
+  --shadow: rgba(0,0,0,0.12);
+}
+
+/* smooth theme transition on all elements */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
 
 body {
   background: var(--bg);
@@ -140,7 +167,7 @@ main {
 .topbar {
   position: sticky;
   top: 0;
-  background: rgba(11, 15, 26, 0.92);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   height: var(--topbar-height);
@@ -251,7 +278,7 @@ main {
 
 .field input, .field select, .field textarea,
 select.field {
-  background: var(--bg);
+  background: var(--input-bg);
   border: 1px solid var(--border);
   color: var(--text);
   padding: 11px 12px;
@@ -1261,5 +1288,96 @@ b { font-weight: 600; }
   gap: 6px;
 }
 
+/* ===== THEME TOGGLE BUTTON ===== */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
 
+.theme-toggle:hover {
+  background: var(--panel);
+  border-color: var(--teal);
+}
 
+.theme-toggle .theme-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ===== LIGHT MODE OVERRIDES for hardcoded dark colors ===== */
+
+/* Nav hover and sidebar buttons */
+body.light .nav button:hover { background: #00000008; color: var(--text); }
+body.light .nav button.active { background: #0d948818; color: var(--teal); }
+body.light .side-bottom button { background: #00000006; }
+body.light .side-bottom button:hover { background: #00000012; color: var(--text); }
+
+/* Badges */
+body.light .badge { background: #00000008; color: var(--muted); border-color: #00000014; }
+body.light .badge.success { background: #16a34a14; color: var(--green); border-color: #16a34a33; }
+body.light .badge.warning { background: #ea580c14; color: var(--orange); border-color: #ea580c33; }
+body.light .badge.danger  { background: #dc262614; color: var(--red);    border-color: #dc262633; }
+body.light .badge.info    { background: #0d948814; color: var(--teal);   border-color: #0d948833; }
+
+/* Buttons */
+body.light .btn { background: var(--card); border-color: var(--border); color: var(--text); }
+body.light .btn:hover { background: #00000008; }
+body.light .btn.primary { background: #0d948814; border-color: #0d948844; color: var(--teal); }
+body.light .btn.primary:hover { background: #0d948824; }
+
+/* Active nav route */
+body.light .route:hover { border-color: #0d948833; }
+
+/* Topbar selects in light mode */
+body.light .topbar select { background: var(--card); color: var(--text); border-color: var(--border); }
+body.light .topbar-actions button { color: var(--text); }
+body.light .topbar-actions button:hover { background: #00000008; }
+
+/* Alert cards in light mode - ensure text is readable */
+body.light .alert { background: var(--card); border-color: var(--border); }
+body.light .alert b { color: var(--text); }
+
+/* Inline style dark background color overrides for alert info box */
+body.light .alert-info-box { background: #ea580c0d !important; border-color: #ea580c33 !important; color: #9a3412 !important; }
+body.light .alert-risk-box { background: #ea580c12 !important; border-color: #ea580c44 !important; }
+body.light .alert-risk-box b { color: #9a3412 !important; }
+body.light .alert-risk-box div { color: var(--text) !important; }
+
+/* Scrollbar */
+body.light ::-webkit-scrollbar-thumb { background: #00000018; }
+
+/* Mobile header */
+body.light .mobile-header { background: var(--panel); }
+body.light .mobile-menu { color: var(--text); }
+
+/* Toast */
+body.light .toast { background: var(--card); box-shadow: 0 4px 16px var(--shadow); }
+
+/* Home page desc */
+body.light .home-desc { color: var(--muted); }
+
+/* OSM dropdowns */
+body.light .osm-suggestions-dropdown { background: var(--card); border-color: #0d948866; }
+body.light .osm-suggestion-item { color: var(--text); border-color: var(--border); }
+body.light .osm-suggestion-item:hover { background: #0d948818; color: var(--text); }
+body.light .osm-suggestion-item .item-title { color: var(--text); }
+body.light .osm-suggestion-item .item-sub { color: var(--muted); }
+
+/* Risk panel in light mode */
+body.light .risk-panel-container { background: var(--card); border-color: var(--border); }
+body.light .risk-factor-card { background: var(--bg); border-color: var(--border); }
+body.light .risk-safety-summary { background: var(--bg); border-color: var(--border); }
+body.light .risk-factor-tag { background: var(--bg); color: var(--muted); border-color: var(--border); }
+
+/* Plan page autocomplete and details */
+body.light .route-grid div { background: var(--bg); }

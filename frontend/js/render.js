@@ -73,7 +73,7 @@ function sidebar() {
       <!-- Language selector in sidebar -->
       <div style="margin-top:16px;padding:0 4px">
         <div class="eyebrow" style="padding:8px 8px 6px">${t('lang.select')}</div>
-        <select class="field" style="background:#0b0f1a;color:#e8edf5;border:1px solid #ffffff16;border-radius:8px;padding:8px;width:100%" onchange="changeLang(this.value)">
+        <select class="field" style="background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;width:100%" onchange="changeLang(this.value)">
           ${LANGUAGES.map(l => `<option value="${l.code}" ${state.language === l.code ? 'selected' : ''}>${l.label}</option>`).join('')}
         </select>
       </div>
@@ -90,15 +90,19 @@ function sidebar() {
 }
 
 function mobileHeader() {
+  const isDark = !document.body.classList.contains('light');
   return `
   <header class="mobile-header">
     <button class="mobile-menu" onclick="go('Home')">
       ◉ <span class="logo">NER <b>SmartLogix</b></span>
     </button>
-    <div style="display:flex;gap:8px">
-      <select style="background:#111827;color:#fff;border:1px solid #ffffff18;border-radius:8px;padding:6px 8px;font-size:11px" onchange="changeLang(this.value)">
+    <div style="display:flex;gap:8px;align-items:center">
+      <select style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:11px" onchange="changeLang(this.value)">
         ${LANGUAGES.map(l => `<option value="${l.code}" ${state.language === l.code ? 'selected' : ''}>${l.label}</option>`).join('')}
       </select>
+      <button class="theme-toggle" onclick="toggleTheme()" style="padding:6px 10px" title="${isDark ? 'Light Mode' : 'Dark Mode'}">
+        <span class="theme-icon">${isDark ? '☀' : '☽'}</span>
+      </button>
       <button class="mobile-menu" onclick="state.menu=!state.menu;render()">☰</button>
     </div>
   </header>`;
@@ -106,6 +110,7 @@ function mobileHeader() {
 
 
 function topbar() {
+  const isDark = !document.body.classList.contains('light');
   return `
   <div class="topbar">
     <div>
@@ -113,9 +118,13 @@ function topbar() {
       <b style="display:block;margin-top:5px">${state.page}</b>
     </div>
     <div class="topbar-actions">
-      <select style="background:#111827;color:#cbd5e1;border:1px solid #ffffff14;padding:11px 12px;border-radius:8px;font-size:12px" onchange="changeLang(this.value)">
+      <select style="background:var(--card);color:var(--text);border:1px solid var(--border);padding:11px 12px;border-radius:8px;font-size:12px" onchange="changeLang(this.value)">
         ${LANGUAGES.map(l => `<option value="${l.code}" ${state.language === l.code ? 'selected' : ''}>${l.label}</option>`).join('')}
       </select>
+      <button class="theme-toggle" onclick="toggleTheme()" title="${isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}">
+        <span class="theme-icon">${isDark ? '☀' : '☽'}</span>
+        <span style="font-size:12px">${isDark ? 'Light' : 'Dark'}</span>
+      </button>
       <button onclick="go('Alerts')">🔔</button>
       ${state.user
         ? `<button onclick="handleLogout()">${t('nav.logout')}</button>`

@@ -72,6 +72,19 @@ window.retryBackendConnection = async () => {
   }
 };
 
+
+// ===== THEME SYSTEM =====
+// Apply saved theme immediately (before render, avoids flash)
+const savedTheme = localStorage.getItem('nsl_theme') || 'dark';
+if (savedTheme === 'light') document.body.classList.add('light');
+
+window.toggleTheme = function() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('nsl_theme', isLight ? 'light' : 'dark');
+  // Re-render only to update the toggle icon/label in topbar
+  render();
+};
+
 async function init() {
   // Restore session from localStorage
   loadSession();

@@ -45,12 +45,12 @@ export function renderAlertsPage() {
     </div>
 
     ${hasSampleData ? `
-    <div style="padding:12px 14px;background:#fb923c0d;border:1px solid #fb923c33;border-radius:8px;margin-bottom:18px;font-size:12px;color:#fdba74;line-height:1.6">
+    <div class="alert-info-box" style="padding:12px 14px;background:#fb923c0d;border:1px solid #fb923c33;border-radius:8px;margin-bottom:18px;font-size:12px;color:var(--orange);line-height:1.6">
       ⚡ ${t('alerts.sampleNote')}
     </div>` : ''}
 
-    ${!state.loadingAlerts && state.top10Alerts.length === 0 ? `<div style="padding:18px;background:#34d39912;border:1px solid #34d39944;border-radius:10px;color:#86efac;margin-bottom:18px"><b>Safer to travel</b><br><span style="font-size:12px">No active verified NER alerts were detected in the latest update.</span></div>` : ''}
-    ${state.top10Alerts.length > 0 ? `<div style="padding:14px;background:#fb923c12;border:1px solid #fb923c44;border-radius:10px;margin-bottom:18px"><b style="color:#fdba74">Current NER alert risk: ${alertRisk}%</b><div style="font-size:12px;color:#cbd5e1;margin-top:4px">Based on verified alert severity, recency, and active alert count.</div></div>` : ''}
+    ${!state.loadingAlerts && state.top10Alerts.length === 0 ? `<div style="padding:18px;background:#34d39912;border:1px solid #34d39944;border-radius:10px;color:var(--green);margin-bottom:18px"><b>Safer to travel</b><br><span style="font-size:12px">No active verified NER alerts were detected in the latest update.</span></div>` : ''}
+    ${state.top10Alerts.length > 0 ? `<div class="alert-risk-box" style="padding:14px;background:#fb923c12;border:1px solid #fb923c44;border-radius:10px;margin-bottom:18px"><b style="color:var(--orange)">Current NER alert risk: ${alertRisk}%</b><div style="font-size:12px;color:var(--text);margin-top:4px">Based on verified alert severity, recency, and active alert count.</div></div>` : ''}
     ${state.loadingAlerts
       ? `<div class="empty"><div><div style="font-size:32px;color:var(--teal)">⟳</div><b>${t('alerts.loading')}</b></div></div>`
       : state.top10Alerts.length === 0
@@ -70,7 +70,7 @@ function alertItem(a, i, tone) {
   <button class="alert" onclick="selectAlert(${i})">
     <div class="row">
       <div style="flex:1">
-        <b>${esc(a.title)}</b>
+        <b style="color:var(--text)">${esc(a.title)}</b>
       <span class="badge ${tone[a.severity] || ''}" style="margin-left:8px">Risk ${risk}%</span>
         ${a.changeType === 'NEW' ? `<span class="badge success" style="margin-left:6px">NEW</span>` : a.changeType === 'UPDATED' ? `<span class="badge info" style="margin-left:6px">UPDATED</span>` : ''}
       </div>
@@ -78,7 +78,7 @@ function alertItem(a, i, tone) {
     </div>
     <div class="row" style="margin-top:8px">
       <span class="muted">${esc(a.state)} · ${esc(a.location)}</span>
-      <span class="badge" style="background:#ffffff08">${esc(a.alertType)}</span>
+      <span class="badge" style="background:var(--bg);color:var(--text)">${esc(a.alertType)}</span>
       <span class="muted" style="font-size:11px;margin-left:6px">${esc(a.source || '')}</span>
     </div>
   </button>`;
