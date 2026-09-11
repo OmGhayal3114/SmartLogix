@@ -195,7 +195,7 @@ function formatStep(step) {
 function routeToResult(route, index, origin, destination, originPoint, destinationPoint, vehicleType) {
   return {
     index,
-    summary: index === 0 ? 'OSRM Recommended Road Route' : `OSRM Alternative Route ${index + 1}`,
+    summary: index === 0 ? 'Direct Highway Corridor' : `Alternative Road Corridor ${index + 1}`,
     distance: `${(route.distance / 1000).toFixed(1)} km`,
     distanceValue: Math.round(route.distance),
     duration: formatDuration(route.duration),
