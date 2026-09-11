@@ -1,5 +1,5 @@
 // Dynamic API base: localhost:5000 for local dev, /api for cloud deployment (Vercel)
-const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '3000')
   ? `${window.location.protocol}//${window.location.hostname}:5000/api`
   : '/api';
 
@@ -10,7 +10,7 @@ async function request(method, path, body, token) {
   if (body) opts.body = JSON.stringify(body);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
   try {
     opts.signal = controller.signal;
     const res = await fetch(BASE + path, opts);

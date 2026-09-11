@@ -34,6 +34,7 @@ exports.calculateRoutes = async (req, res, next) => {
               overall: ml.overall,
               factors: ml.factors,
               segments: ml.segments,
+              metadata: ml.metadata || {},
               recommendation: ml.overall.recommendation,
               confidence: Number((ml.overall.confidencePct / 100).toFixed(2)),
               confidencePct: ml.overall.confidencePct,

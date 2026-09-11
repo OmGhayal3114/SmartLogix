@@ -446,6 +446,7 @@ async function findAlternateSafetyRoute({
         overall: riskResult.overall,
         factors: riskResult.factors,
         segments: riskResult.segments,
+        metadata: riskResult.metadata || {},
         recommendation: riskResult.overall.recommendation,
         confidence: Number((riskResult.overall.confidencePct / 100).toFixed(2)),
         confidencePct: riskResult.overall.confidencePct,

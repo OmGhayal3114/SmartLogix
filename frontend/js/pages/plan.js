@@ -145,6 +145,7 @@ function routeCard(r, i) {
     overall: r.risk.overall,
     factors: r.risk.factors,
     segments: r.risk.segments,
+    metadata: r.risk.metadata || {},
     recommendation: r.risk.recommendation,
     keyFactors: r.risk.keyFactors,
     confidencePct: r.risk.confidencePct
@@ -153,6 +154,33 @@ function routeCard(r, i) {
   const isSaferAlt = r.isAlternateSafetyRoute || r.isRecommendedForSafety;
   const isDirect = i === 0 || r.isDirectRoute;
   const isHighRisk = cachedRisk?.overall?.level === 'HIGH' || cachedRisk?.overall?.level === 'VERY HIGH' || (cachedRisk?.overall?.score >= 50);
+
+  let riskPanelHtml = '';
+  try {
+    if (cachedRisk) {
+      riskPanelHtml = renderRiskPanel(cachedRisk, i);
+    } else if (state.loadingRouteRisk) {
+      riskPanelHtml = renderRiskPanelLoading();
+    } else if (r.risk) {
+      riskPanelHtml = `
+        <div style="margin-top:12px;padding:12px;border-radius:9px;background:#ffffff06;border:1px solid #ffffff12">
+          <div class="row">
+            <div>
+              <small>Route risk</small>
+              <strong style="display:block;margin-top:4px;color:${r.risk.risk === 'HIGH' ? 'var(--red)' : r.risk.risk === 'MEDIUM' ? 'var(--orange)' : 'var(--green)'}">
+                ${esc(r.risk.risk)} · ${Number(r.risk.score || 0).toFixed(1)}/100
+              </strong>
+            </div>
+            <span class="badge">${Number(r.risk.metrics?.matchedHazards || 0)} hazards</span>
+          </div>
+          ${r.risk.recommendation ? `<div class="muted" style="margin-top:7px;font-size:11px">${esc(r.risk.recommendation)}</div>` : ''}
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.warn('[Plan] Error rendering risk panel for route', i, err);
+    riskPanelHtml = renderRiskPanelError('Route risk analysis temporarily unavailable.');
+  }
 
   return `
   <div class="route" style="${isSaferAlt ? 'border:1px solid #10b98155;background:#051b1740' : ''}">
@@ -172,7 +200,7 @@ function routeCard(r, i) {
         ` : '')}
 
         ${cachedRisk?.overall ? `
-          <span class="risk-overall-chip" style="display:inline-flex;margin-left:8px;padding:2px 8px;font-size:10px;background:${cachedRisk.overall.color}20;border:1px solid ${cachedRisk.overall.color}60;color:${cachedRisk.overall.color}">
+          <span class="risk-overall-chip" style="display:inline-flex;margin-left:8px;padding:2px 8px;font-size:10px;background:${cachedRisk.overall.color || '#14b8a6'}20;border:1px solid ${cachedRisk.overall.color || '#14b8a6'}60;color:${cachedRisk.overall.color || '#14b8a6'}">
             ${cachedRisk.overall.level} · ${cachedRisk.overall.score}% Risk
           </span>
         ` : ''}
@@ -193,25 +221,7 @@ function routeCard(r, i) {
 
     <!-- Route Risk Intelligence Panel -->
     <div id="risk-panel-container-${i}">
-      ${cachedRisk
-        ? renderRiskPanel(cachedRisk, i)
-        : state.loadingRouteRisk
-        ? renderRiskPanelLoading()
-        : (r.risk ? `
-          <div style="margin-top:12px;padding:12px;border-radius:9px;background:#ffffff06;border:1px solid #ffffff12">
-            <div class="row">
-              <div>
-                <small>Route risk</small>
-                <strong style="display:block;margin-top:4px;color:${r.risk.risk === 'HIGH' ? 'var(--red)' : r.risk.risk === 'MEDIUM' ? 'var(--orange)' : 'var(--green)'}">
-                  ${esc(r.risk.risk)} · ${Number(r.risk.score || 0).toFixed(1)}/100
-                </strong>
-              </div>
-              <span class="badge">${Number(r.risk.metrics?.matchedHazards || 0)} hazards</span>
-            </div>
-            ${r.risk.recommendation ? `<div class="muted" style="margin-top:7px;font-size:11px">${esc(r.risk.recommendation)}</div>` : ''}
-          </div>
-        ` : '')
-      }
+      ${riskPanelHtml}
     </div>
 
     ${r.warnings && r.warnings.length > 0 ? `<div class="muted" style="margin-top:8px">⚠ ${esc(r.warnings.join(' '))}</div>` : ''}
@@ -348,6 +358,7 @@ window.calculateRoutes = async () => {
           overall: r.risk.overall,
           factors: r.risk.factors,
           segments: r.risk.segments,
+          metadata: r.risk.metadata || {},
           recommendation: r.risk.recommendation,
           keyFactors: r.risk.keyFactors,
           confidencePct: r.risk.confidencePct

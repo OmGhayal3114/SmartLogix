@@ -63,14 +63,32 @@ export function renderRiskPanel(data, routeIndex = 0) {
     return renderRiskPanelError(data?.error);
   }
 
-  const { overall, factors, segments, metadata } = data;
+  const overall = data.overall || {};
+  const factors = data.factors || {};
+  const segments = data.segments || [];
+  const metadata = data.metadata || {};
+
+  const defaultItem = (name, icon) => ({
+    level: 'LOW',
+    score: 0,
+    icon: icon || '•',
+    explanation: `Normal ${name.toLowerCase()} conditions expected along corridor.`,
+    dataSource: 'Live telemetry & climatology'
+  });
 
   const factorList = [
-    { key: 'rain', name: 'Heavy Rain', item: factors.rain },
-    { key: 'landslide', name: 'Landslide', item: factors.landslide },
-    { key: 'flood', name: 'Flood', item: factors.flood },
-    { key: 'traffic', name: 'Traffic', item: factors.traffic }
+    { key: 'rain', name: 'Heavy Rain', item: factors.rain || defaultItem('Heavy Rain', '🌧️') },
+    { key: 'landslide', name: 'Landslide', item: factors.landslide || defaultItem('Landslide', '🏔️') },
+    { key: 'flood', name: 'Flood', item: factors.flood || defaultItem('Flood', '🌊') },
+    { key: 'traffic', name: 'Traffic', item: factors.traffic || defaultItem('Traffic', '🚗') }
   ];
+
+  const overallColor = overall.color || getLevelColor(overall.level || 'LOW');
+  const overallLevel = overall.level || 'LOW';
+  const overallScore = overall.score ?? 0;
+  const overallConfidence = overall.confidencePct ?? 85;
+  const overallRecommendation = overall.recommendation || 'Standard highway precautions apply.';
+  const keyFactorsList = Array.isArray(overall.keyFactors) ? overall.keyFactors : [];
 
   return `
     <div class="risk-panel-container" id="risk-panel-content-${routeIndex}">
@@ -81,29 +99,30 @@ export function renderRiskPanel(data, routeIndex = 0) {
           <span class="risk-title-text">ROUTE RISK INTELLIGENCE</span>
           <span class="risk-badge-proto">PROTOTYPE — ESTIMATED RISK</span>
         </div>
-        <div class="risk-overall-chip" style="background:${overall.color}20;border:1px solid ${overall.color}60;color:${overall.color}">
-          <span class="risk-chip-dot" style="background:${overall.color}"></span>
-          <span>${escapeHtml(overall.level)}</span>
-          <span style="font-weight:700;margin-left:4px">${overall.score}%</span>
+        <div class="risk-overall-chip" style="background:${overallColor}20;border:1px solid ${overallColor}60;color:${overallColor}">
+          <span class="risk-chip-dot" style="background:${overallColor}"></span>
+          <span>${escapeHtml(overallLevel)}</span>
+          <span style="font-weight:700;margin-left:4px">${overallScore}%</span>
         </div>
       </div>
 
       <!-- 4 Risk Factor Cards Grid -->
       <div class="risk-factors-grid">
         ${factorList.map(f => {
-          const color = getLevelColor(f.item.level);
+          const item = f.item || defaultItem(f.name);
+          const color = getLevelColor(item.level || 'LOW');
           return `
-            <div class="risk-factor-card" title="${escapeHtml(f.item.dataSource)}">
+            <div class="risk-factor-card" title="${escapeHtml(item.dataSource || '')}">
               <div class="risk-factor-top">
-                <span class="risk-factor-icon">${f.item.icon}</span>
+                <span class="risk-factor-icon">${item.icon || '•'}</span>
                 <span class="risk-factor-name">${f.name}</span>
-                <span class="risk-factor-score" style="color:${color}">${f.item.score}%</span>
+                <span class="risk-factor-score" style="color:${color}">${item.score ?? 0}%</span>
               </div>
               <div class="risk-bar-track">
-                <div class="risk-bar-fill" style="width:${f.item.score}%;background:${color}"></div>
+                <div class="risk-bar-fill" style="width:${item.score ?? 0}%;background:${color}"></div>
               </div>
-              <div class="risk-factor-level" style="color:${color}">${f.item.level}</div>
-              <div class="risk-factor-desc">${escapeHtml(f.item.explanation)}</div>
+              <div class="risk-factor-level" style="color:${color}">${item.level || 'LOW'}</div>
+              <div class="risk-factor-desc">${escapeHtml(item.explanation || 'Normal conditions.')}</div>
             </div>
           `;
         }).join('')}
@@ -120,15 +139,17 @@ export function renderRiskPanel(data, routeIndex = 0) {
           </div>
           <div class="risk-segment-strip">
             <span class="risk-strip-terminal">Origin</span>
-            ${segments.map((seg, sIdx) => `
-              <div class="risk-segment-bar" onclick="window.inspectRiskSegment(${routeIndex}, ${sIdx})" title="${seg.name}: ${seg.riskLevel} (${seg.riskScore}%) - ${seg.primaryHazardType}">
-                <div class="risk-seg-line" style="background:${seg.color}"></div>
-                <div class="risk-seg-node" style="border-color:${seg.color};background:${seg.color}30">
-                  <span style="color:${seg.color}">${sIdx + 1}</span>
+            ${segments.map((seg, sIdx) => {
+              const segColor = seg.color || getLevelColor(seg.riskLevel || 'LOW');
+              return `
+              <div class="risk-segment-bar" onclick="window.inspectRiskSegment(${routeIndex}, ${sIdx})" title="${escapeHtml(seg.name || 'Segment ' + (sIdx+1))}: ${seg.riskLevel || 'LOW'} (${seg.riskScore || 0}%) - ${escapeHtml(seg.primaryHazardType || '')}">
+                <div class="risk-seg-line" style="background:${segColor}"></div>
+                <div class="risk-seg-node" style="border-color:${segColor};background:${segColor}30">
+                  <span style="color:${segColor}">${sIdx + 1}</span>
                 </div>
-                <div class="risk-seg-label">${seg.riskLevel}</div>
+                <div class="risk-seg-label">${seg.riskLevel || 'LOW'}</div>
               </div>
-            `).join('')}
+            `;}).join('')}
             <span class="risk-strip-terminal">Dest</span>
           </div>
         </div>
@@ -144,16 +165,18 @@ export function renderRiskPanel(data, routeIndex = 0) {
           <div style="flex:1">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
               <span style="font-size:12px;font-weight:700;color:#f8fafc">SAFETY ADVISORY & FACTORS</span>
-              <span style="font-size:11px;color:#94a3b8">Model Confidence: <b style="color:var(--teal,#14b8a6)">${overall.confidencePct}%</b></span>
+              <span style="font-size:11px;color:#94a3b8">Model Confidence: <b style="color:var(--teal,#14b8a6)">${overallConfidence}%</b></span>
             </div>
             <div style="font-size:11px;color:#cbd5e1;margin-top:4px;line-height:1.4">
-              ${escapeHtml(overall.recommendation)}
+              ${escapeHtml(overallRecommendation)}
             </div>
-            <div class="risk-factors-tags" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
-              ${overall.keyFactors.map(kf => `
-                <span class="risk-factor-tag">${escapeHtml(kf)}</span>
-              `).join('')}
-            </div>
+            ${keyFactorsList.length > 0 ? `
+              <div class="risk-factors-tags" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+                ${keyFactorsList.map(kf => `
+                  <span class="risk-factor-tag">${escapeHtml(kf)}</span>
+                `).join('')}
+              </div>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -161,10 +184,10 @@ export function renderRiskPanel(data, routeIndex = 0) {
       <!-- Metadata & Attributions Footer -->
       <div class="risk-panel-footer">
         <div class="risk-footer-sources">
-          Data: Open-Meteo Weather Radar · IMD Climatology · GSI Zonation · ${escapeHtml(factors.traffic.dataSource)}
+          Data: Open-Meteo Weather Radar · IMD Climatology · GSI Zonation · ${escapeHtml(factors.traffic?.dataSource || 'Estimated Traffic')}
         </div>
         <div class="risk-footer-time">
-          Analyzed in ${metadata.calculationDurationMs}ms
+          ${metadata && metadata.calculationDurationMs ? `Analyzed in ${metadata.calculationDurationMs}ms` : 'AI Risk Engine Active'}
         </div>
       </div>
     </div>
@@ -182,7 +205,7 @@ window.inspectRiskSegment = function(routeIndex, segmentIndex) {
   if (!analysis || !analysis.segments || !analysis.segments[segmentIndex]) return;
 
   const seg = analysis.segments[segmentIndex];
-  const color = getLevelColor(seg.riskLevel);
+  const color = getLevelColor(seg.riskLevel || 'LOW');
 
   if (container.style.display !== 'none' && container.dataset.activeSegment == segmentIndex) {
     container.style.display = 'none';
@@ -191,23 +214,27 @@ window.inspectRiskSegment = function(routeIndex, segmentIndex) {
 
   container.dataset.activeSegment = segmentIndex;
   container.style.display = 'block';
+
+  const cond = seg.currentConditions || {};
+  const hist = seg.historicalContext || {};
+
   container.innerHTML = `
     <div style="background:#0f172a;border:1px solid ${color}60;border-radius:8px;padding:10px;margin-top:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e293b;padding-bottom:6px">
-        <b style="color:${color};font-size:12px">Segment ${segmentIndex + 1}: ${escapeHtml(seg.terrain)} (${seg.state})</b>
+        <b style="color:${color};font-size:12px">Segment ${segmentIndex + 1}: ${escapeHtml(seg.terrain || 'Corridor')} (${escapeHtml(seg.state || 'NER')})</b>
         <div style="display:flex;gap:6px;align-items:center">
-          <span class="badge" style="background:${color}20;color:${color};border:1px solid ${color}60">${seg.riskLevel} (${seg.riskScore}%)</span>
+          <span class="badge" style="background:${color}20;color:${color};border:1px solid ${color}60">${seg.riskLevel || 'LOW'} (${seg.riskScore || 0}%)</span>
           <button onclick="document.getElementById('risk-segment-inspector-${routeIndex}').style.display='none'" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:14px">✕</button>
         </div>
       </div>
       <div style="font-size:11px;color:#cbd5e1;margin-top:6px;line-height:1.4">
-        <b>Primary Risk:</b> ${escapeHtml(seg.primaryHazardType)} — ${escapeHtml(seg.explanation)}
+        <b>Primary Risk:</b> ${escapeHtml(seg.primaryHazardType || 'Weather')} — ${escapeHtml(seg.explanation || 'Normal conditions')}
       </div>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px;font-size:10px;color:#94a3b8">
-        <div>🌧️ Forecast Precip: <b style="color:#f8fafc">${seg.currentConditions.forecast_24h_mm} mm (${seg.currentConditions.precipitation_probability}%)</b></div>
-        <div>🏔️ Landslide Corridor: <b style="color:#f8fafc">${escapeHtml(seg.historicalContext.landslideCorridor)}</b></div>
-        <div>🌊 Flood Zone: <b style="color:#f8fafc">${escapeHtml(seg.historicalContext.floodZone)}</b></div>
-        <div>🌡️ Temp & Humidity: <b style="color:#f8fafc">${seg.currentConditions.temperature}, ${seg.currentConditions.humidity}</b></div>
+        <div>🌧️ Forecast Precip: <b style="color:#f8fafc">${cond.forecast_24h_mm ?? 0} mm (${cond.precipitation_probability ?? 0}%)</b></div>
+        <div>🏔️ Landslide Corridor: <b style="color:#f8fafc">${escapeHtml(hist.landslideCorridor || 'No major corridor recorded')}</b></div>
+        <div>🌊 Flood Zone: <b style="color:#f8fafc">${escapeHtml(hist.floodZone || 'None recorded')}</b></div>
+        <div>🌡️ Temp & Humidity: <b style="color:#f8fafc">${cond.temperature || 'N/A'}, ${cond.humidity || 'N/A'}</b></div>
       </div>
       <div style="margin-top:8px;display:flex;justify-content:flex-end">
         <button class="btn primary" style="padding:3px 10px;font-size:11px" onclick="window.focusSegmentOnMap(${routeIndex}, ${segmentIndex})">

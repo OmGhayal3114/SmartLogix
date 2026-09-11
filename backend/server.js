@@ -1,4 +1,7 @@
-require('dotenv').config({ path: '../.env' });
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -75,6 +78,11 @@ async function ensureDbConnected() {
 // Ensure DB is connected before handling API routes
 app.use('/api', async (req, res, next) => {
   if (req.path === '/health') {
+    return next();
+  }
+  // Allow route calculation and ML analysis to proceed even if DB is still connecting
+  if (req.path.startsWith('/routes') || req.path.startsWith('/ml') || req.path.startsWith('/facilities')) {
+    ensureDbConnected().catch(() => {});
     return next();
   }
   try {
