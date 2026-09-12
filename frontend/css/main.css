@@ -1524,3 +1524,8 @@ body.light .safety-alert-banner[style*="0f172a"] { background: linear-gradient(1
 /* riskPanel.js: loading text #94a3b8 */
 body.light .risk-panel-loading > div[style*="#94a3b8"] { color: var(--muted) !important; }
 
+
+/* Fix for Home Hero Dark Banner in Light Mode */
+body.light .home-hero .home-tagline { color: #f8fafc !important; }
+body.light .home-hero .home-desc { color: #cbd5e1 !important; }
+body.light .home-hero .home-eyebrow { color: #94a3b8 !important; }
