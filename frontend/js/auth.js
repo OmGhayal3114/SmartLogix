@@ -19,7 +19,7 @@ export function renderAuthModal() {
 
       <div class="row">
         <div>
-          <div class="eyebrow" style="color:var(--teal)">◉ NER SmartLogix</div>
+          <div class="eyebrow" style="color:var(--teal);display:flex;align-items:center;gap:6px"><img src="/assets/logo.jpg" alt="Logo" style="width:16px;height:16px;border-radius:4px"> NER SmartLogix</div>
           <h2 style="margin-top:7px">${isLogin ? t('auth.loginTitle') : t('auth.signupTitle')}</h2>
         </div>
         <button class="link" onclick="closeAuth()">✕</button>

@@ -57,7 +57,10 @@ function sidebar() {
   return `
   <aside class="sidebar ${state.menu ? 'open' : ''}">
     <div class="side-logo">
-      <div class="logo">◉ NER <b>SmartLogix</b></div>
+      <div class="logo">
+        <img src="/assets/logo.jpg" alt="Logo" style="width:24px;height:24px;border-radius:6px;vertical-align:middle;margin-right:6px">
+        NER <b>SmartLogix</b>
+      </div>
       <small>${t('nav.tagline')}</small>
     </div>
 

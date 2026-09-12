@@ -1,4 +1,4 @@
-﻿// NER SmartLogix — Home page
+// NER SmartLogix — Home page
 
 import { t } from '../i18n.js';
 
@@ -15,7 +15,7 @@ export function renderHomePage() {
     <div class="home-hero">
       <div class="home-hero-inner">
         <div class="home-logo-wrap">
-          <span class="home-logo-icon">◉</span>
+          <img src="/assets/logo.jpg" alt="Logo" class="home-logo-icon" style="width:36px;height:36px;border-radius:8px;object-fit:cover">
           <div>
             <div class="home-brand">NER <strong>SmartLogix</strong></div>
             <div class="home-eyebrow">${t('nav.tagline')}</div>

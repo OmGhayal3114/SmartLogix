@@ -956,11 +956,12 @@ export function startUserLocationTracking() {
       const accuracy = Math.round(pos.coords.accuracy || 10);
       state.userLocation = { lat, lng };
 
-      // Reactive update: if facility directions were requested and waiting for GPS, or actively in GPS mode
-      if (state.selectedFacility && (state._facilityRoutePendingGps || state._facilityRouteMode === 'gps')) {
+      // Reactive update: if facility directions were requested and waiting for GPS
+      if (state.selectedFacility && state._facilityRoutePendingGps) {
         state._facilityRoutePendingGps = false;
         displayFacilityRoute(state.selectedFacility, 'gps');
       } else if (state.selectedFacility && facilityStartMarker && state._facilityRouteMode === 'gps') {
+        // Just update the marker location instead of redrawing the entire route and forcing map bounds
         facilityStartMarker.setLatLng([lat, lng]);
       }
 
