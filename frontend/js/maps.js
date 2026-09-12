@@ -645,9 +645,11 @@ export async function displayFacilityRoute(facility, forceMode = null) {
         📍 ${directDistText} from ${escapeHtml(startLabel)}
       </div>
       <div style="margin-top:10px;display:flex;gap:6px;flex-direction:column">
-        <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:#040a12;border:none;width:100%;padding:6px 10px;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer">
-          + Add as Waypoint to Trip
-        </button>
+        ${(state.origin && state.destination) ? `
+          <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:#040a12;border:none;width:100%;padding:6px 10px;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer">
+            + Add as Waypoint to Trip
+          </button>
+        ` : ''}
         <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:#1e293b;color:#38bdf8;border:1px solid #38bdf844;padding:6px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:4px">
           ↗ Open in Google Maps
         </a>
@@ -833,8 +835,12 @@ window.routeFacilityFrom = (mode) => {
  * Calculates complete multi-stop journey: Origin -> Facility Waypoint -> Destination.
  */
 export async function continueWithFacilityWaypoint() {
-  if (!state.selectedFacility || !state.origin || !state.destination) return;
   const { notify } = await import('./render.js');
+  if (!state.selectedFacility) return;
+  if (!state.origin || !state.destination) {
+    notify('Please plan a trip first before adding a waypoint.', 'warning');
+    return;
+  }
   notify(`Calculating journey via ${state.selectedFacility.name}…`, 'info');
 
   try {
@@ -864,6 +870,11 @@ export async function continueWithFacilityWaypoint() {
         `;
       }
       notify(`Journey updated via ${state.selectedFacility.name}!`, 'success');
+      
+      // Close popup to show the new route clearly
+      if (facilityTargetMarker) {
+        facilityTargetMarker.closePopup();
+      }
     }
   } catch (err) {
     notify(err.message || 'Could not update multi-stop route.', 'error');
