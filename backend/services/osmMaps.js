@@ -177,24 +177,15 @@ function formatDuration(seconds) {
   return hours ? `${hours} hr ${remainder} min` : `${remainder} min`;
 }
 
-function adjustDurationForVehicle(baseSeconds, vehicleType) {
-  if (!baseSeconds) return 0;
-  // OSRM defaults to car speeds. We apply a multiplier for logistics vehicles.
-  // The NER region has hilly terrain, making heavy vehicles even slower.
-  let multiplier = 1.0;
-  const vt = (vehicleType || '').toLowerCase();
-  if (vt.includes('heavy') || vt.includes('multi-axle')) {
-    multiplier = 1.60; // 60% slower
-  } else if (vt.includes('tanker')) {
-    multiplier = 1.50; // 50% slower
-  } else if (vt.includes('truck')) {
-    multiplier = 1.40; // 40% slower (incl. Mini Truck, Refrigerated Truck)
-  } else if (vt.includes('cargo') || vt.includes('van')) {
-    multiplier = 1.25; // 25% slower
-  } else if (vt.includes('pickup')) {
-    multiplier = 1.15; // 15% slower
-  }
-  return baseSeconds * multiplier;
+function calculateLogisticsDuration(distanceMeters, vehicleType) {
+  if (!distanceMeters) return 0;
+  
+  // Calculate duration using a strict average speed of 40 km/h.
+  // 40 km/h = 40,000 meters / 3600 seconds.
+  // Time (seconds) = distance (meters) / (40000 / 3600) = distance * 0.09
+  let baseSeconds = distanceMeters * 0.09;
+  
+  return baseSeconds;
 }
 
 function formatStep(step) {
@@ -213,7 +204,7 @@ function formatStep(step) {
 }
 
 function routeToResult(route, index, origin, destination, originPoint, destinationPoint, vehicleType) {
-  const adjDuration = adjustDurationForVehicle(route.duration, vehicleType);
+  const adjDuration = calculateLogisticsDuration(route.distance, vehicleType);
   return {
     index,
     summary: index === 0 ? 'Direct Highway Corridor' : `Alternative Road Corridor ${index + 1}`,
@@ -274,9 +265,9 @@ async function getWaypointRoute(origin, waypoint, destination, vehicleType = 'Tr
   const leg1 = route.legs?.[0] || {};
   const leg2 = route.legs?.[1] || {};
 
-  const adjDuration = adjustDurationForVehicle(route.duration, vehicleType);
-  const adjLeg1Dur = adjustDurationForVehicle(leg1.duration || 0, vehicleType);
-  const adjLeg2Dur = adjustDurationForVehicle(leg2.duration || 0, vehicleType);
+  const adjDuration = calculateLogisticsDuration(route.distance, vehicleType);
+  const adjLeg1Dur = calculateLogisticsDuration(leg1.distance || 0, vehicleType);
+  const adjLeg2Dur = calculateLogisticsDuration(leg2.distance || 0, vehicleType);
 
   return {
     summary: `Route via ${waypointPoint.name || 'Facility'}`,
@@ -315,7 +306,7 @@ async function getDirectRoute(start, destination, vehicleType = 'Truck') {
     if (response.data?.code === 'Ok' && response.data.routes?.[0]?.geometry) {
       const route = response.data.routes[0];
       const leg = route.legs?.[0] || {};
-      const adjDuration = adjustDurationForVehicle(route.duration || 0, vehicleType);
+      const adjDuration = calculateLogisticsDuration(route.distance || 0, vehicleType);
       return {
         summary: `Direct route to ${destPoint.name || 'Facility'}`,
         distance: `${((route.distance || 0) / 1000).toFixed(1)} km`,
@@ -337,7 +328,7 @@ async function getDirectRoute(start, destination, vehicleType = 'Truck') {
   // Geometric fallback so the user always sees a visible route even if OSRM is unreachable
   const dMeters = distanceMeters(startPoint.lat, startPoint.lng, destPoint.lat, destPoint.lng);
   const estSeconds = Math.max(60, Math.round((dMeters / 1000) / 40 * 3600)); // 40 km/h avg
-  const adjEstSeconds = adjustDurationForVehicle(estSeconds, vehicleType);
+  const adjEstSeconds = calculateLogisticsDuration(dMeters, vehicleType);
   return {
     summary: `Direct path to ${destPoint.name || 'Facility'}`,
     distance: dMeters >= 1000 ? `${(dMeters / 1000).toFixed(1)} km` : `${Math.round(dMeters)} m`,
@@ -502,7 +493,7 @@ async function findAlternateSafetyRoute({
   const chosen = candidateRoutes[0];
   const { wp, osrmRoute } = chosen;
 
-  const adjDuration = adjustDurationForVehicle(osrmRoute.duration, vehicleType);
+  const adjDuration = calculateLogisticsDuration(osrmRoute.distance, vehicleType);
 
   const altRouteObj = {
     index: 1,
