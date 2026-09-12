@@ -177,6 +177,26 @@ function formatDuration(seconds) {
   return hours ? `${hours} hr ${remainder} min` : `${remainder} min`;
 }
 
+function adjustDurationForVehicle(baseSeconds, vehicleType) {
+  if (!baseSeconds) return 0;
+  // OSRM defaults to car speeds. We apply a multiplier for logistics vehicles.
+  // The NER region has hilly terrain, making heavy vehicles even slower.
+  let multiplier = 1.0;
+  const vt = (vehicleType || '').toLowerCase();
+  if (vt.includes('heavy') || vt.includes('multi-axle')) {
+    multiplier = 1.60; // 60% slower
+  } else if (vt.includes('tanker')) {
+    multiplier = 1.50; // 50% slower
+  } else if (vt.includes('truck')) {
+    multiplier = 1.40; // 40% slower (incl. Mini Truck, Refrigerated Truck)
+  } else if (vt.includes('cargo') || vt.includes('van')) {
+    multiplier = 1.25; // 25% slower
+  } else if (vt.includes('pickup')) {
+    multiplier = 1.15; // 15% slower
+  }
+  return baseSeconds * multiplier;
+}
+
 function formatStep(step) {
   const maneuver = step.maneuver || {};
   const modifier = maneuver.modifier ? maneuver.modifier.replace('-', ' ') : '';
@@ -193,13 +213,14 @@ function formatStep(step) {
 }
 
 function routeToResult(route, index, origin, destination, originPoint, destinationPoint, vehicleType) {
+  const adjDuration = adjustDurationForVehicle(route.duration, vehicleType);
   return {
     index,
     summary: index === 0 ? 'Direct Highway Corridor' : `Alternative Road Corridor ${index + 1}`,
     distance: `${(route.distance / 1000).toFixed(1)} km`,
     distanceValue: Math.round(route.distance),
-    duration: formatDuration(route.duration),
-    durationValue: Math.round(route.duration),
+    duration: formatDuration(adjDuration),
+    durationValue: Math.round(adjDuration),
     durationInTraffic: null,
     startAddress: originPoint.label || origin,
     endAddress: destinationPoint.label || destination,
@@ -253,19 +274,23 @@ async function getWaypointRoute(origin, waypoint, destination, vehicleType = 'Tr
   const leg1 = route.legs?.[0] || {};
   const leg2 = route.legs?.[1] || {};
 
+  const adjDuration = adjustDurationForVehicle(route.duration, vehicleType);
+  const adjLeg1Dur = adjustDurationForVehicle(leg1.duration || 0, vehicleType);
+  const adjLeg2Dur = adjustDurationForVehicle(leg2.duration || 0, vehicleType);
+
   return {
     summary: `Route via ${waypointPoint.name || 'Facility'}`,
     distance: `${(route.distance / 1000).toFixed(1)} km`,
     distanceValue: Math.round(route.distance),
-    duration: formatDuration(route.duration),
-    durationValue: Math.round(route.duration),
+    duration: formatDuration(adjDuration),
+    durationValue: Math.round(adjDuration),
     origin: originPoint,
     waypoint: waypointPoint,
     destination: destinationPoint,
     geometry: route.geometry,
     legs: [
-      { distance: `${((leg1.distance || 0) / 1000).toFixed(1)} km`, duration: formatDuration(leg1.duration || 0) },
-      { distance: `${((leg2.distance || 0) / 1000).toFixed(1)} km`, duration: formatDuration(leg2.duration || 0) }
+      { distance: `${((leg1.distance || 0) / 1000).toFixed(1)} km`, duration: formatDuration(adjLeg1Dur) },
+      { distance: `${((leg2.distance || 0) / 1000).toFixed(1)} km`, duration: formatDuration(adjLeg2Dur) }
     ],
     steps: [...(leg1.steps || []), ...(leg2.steps || [])].map(formatStep).slice(0, 30),
     vehicleType
@@ -290,12 +315,13 @@ async function getDirectRoute(start, destination, vehicleType = 'Truck') {
     if (response.data?.code === 'Ok' && response.data.routes?.[0]?.geometry) {
       const route = response.data.routes[0];
       const leg = route.legs?.[0] || {};
+      const adjDuration = adjustDurationForVehicle(route.duration || 0, vehicleType);
       return {
         summary: `Direct route to ${destPoint.name || 'Facility'}`,
         distance: `${((route.distance || 0) / 1000).toFixed(1)} km`,
         distanceValue: Math.round(route.distance || 0),
-        duration: formatDuration(route.duration || 0),
-        durationValue: Math.round(route.duration || 0),
+        duration: formatDuration(adjDuration),
+        durationValue: Math.round(adjDuration),
         origin: startPoint,
         destination: destPoint,
         geometry: route.geometry,
@@ -311,12 +337,13 @@ async function getDirectRoute(start, destination, vehicleType = 'Truck') {
   // Geometric fallback so the user always sees a visible route even if OSRM is unreachable
   const dMeters = distanceMeters(startPoint.lat, startPoint.lng, destPoint.lat, destPoint.lng);
   const estSeconds = Math.max(60, Math.round((dMeters / 1000) / 40 * 3600)); // 40 km/h avg
+  const adjEstSeconds = adjustDurationForVehicle(estSeconds, vehicleType);
   return {
     summary: `Direct path to ${destPoint.name || 'Facility'}`,
     distance: dMeters >= 1000 ? `${(dMeters / 1000).toFixed(1)} km` : `${Math.round(dMeters)} m`,
     distanceValue: Math.round(dMeters),
-    duration: formatDuration(estSeconds),
-    durationValue: estSeconds,
+    duration: formatDuration(adjEstSeconds),
+    durationValue: Math.round(adjEstSeconds),
     origin: startPoint,
     destination: destPoint,
     geometry: {
@@ -328,7 +355,7 @@ async function getDirectRoute(start, destination, vehicleType = 'Truck') {
     },
     legs: [{
       distance: dMeters >= 1000 ? `${(dMeters / 1000).toFixed(1)} km` : `${Math.round(dMeters)} m`,
-      duration: formatDuration(estSeconds),
+      duration: formatDuration(adjEstSeconds),
       steps: []
     }],
     steps: [`1. Follow direct road connection to ${destPoint.name || 'Facility'}`],
@@ -475,13 +502,15 @@ async function findAlternateSafetyRoute({
   const chosen = candidateRoutes[0];
   const { wp, osrmRoute } = chosen;
 
+  const adjDuration = adjustDurationForVehicle(osrmRoute.duration, vehicleType);
+
   const altRouteObj = {
     index: 1,
     summary: `Alternate Safety Bypass (${wp.name})`,
     distance: `${(osrmRoute.distance / 1000).toFixed(1)} km`,
     distanceValue: Math.round(osrmRoute.distance),
-    duration: formatDuration(osrmRoute.duration),
-    durationValue: Math.round(osrmRoute.duration),
+    duration: formatDuration(adjDuration),
+    durationValue: Math.round(adjDuration),
     durationInTraffic: null,
     startAddress: originPoint.label || origin,
     endAddress: destinationPoint.label || destination,
