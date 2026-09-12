@@ -41,7 +41,7 @@ const TYPE_COLOR = {
   gas_station: 'var(--teal)',
   lodging: 'var(--orange)',
   car_repair: '#fbbf24',
-  parking: '#94a3b8',
+  parking: 'var(--muted)',
   restaurant: '#a78bfa',
   restroom: '#2dd4bf'
 };
@@ -186,7 +186,7 @@ function facilityCard(f) {
   <div class="facility" style="cursor:pointer" onclick="selectFacility('${f.placeId || f.id}')" title="Get directions on map">
     <div class="row" style="align-items:flex-start">
       <div style="flex:1;min-width:0">
-        <b style="font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f8fafc">
+        <b style="font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)">
           <span style="margin-right:4px">${symbol}</span> ${esc(f.name)}
         </b>
         <div class="muted" style="margin-top:4px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.address || '')}</div>

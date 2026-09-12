@@ -24,7 +24,7 @@ function getLevelColor(level) {
     case 'MODERATE': return '#f59e0b';
     case 'HIGH': return '#f97316';
     case 'VERY HIGH': return '#ef4444';
-    default: return '#64748b';
+    default: return 'var(--muted)';
   }
 }
 
@@ -36,7 +36,7 @@ export function renderRiskPanelLoading() {
     <div class="risk-panel-container risk-panel-loading">
       <div class="risk-panel-spinner"></div>
       <div style="font-size:13px;font-weight:600;color:var(--teal,#14b8a6)">Updating route risk intelligence…</div>
-      <div style="font-size:11px;color:#94a3b8;margin-top:4px">Querying live weather radar, elevation profiles & historical hazard patterns</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Querying live weather radar, elevation profiles & historical hazard patterns</div>
     </div>
   `;
 }
@@ -49,7 +49,7 @@ export function renderRiskPanelError(msg) {
     <div class="risk-panel-container" style="border-left: 3px solid #f59e0b;">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:16px">⚠️</span>
-        <div style="font-size:12px;color:#cbd5e1">${escapeHtml(msg || 'Limited historical data available for this route.')}</div>
+        <div style="font-size:12px;color:var(--muted)">${escapeHtml(msg || 'Limited historical data available for this route.')}</div>
       </div>
     </div>
   `;
@@ -132,7 +132,7 @@ export function renderRiskPanel(data, routeIndex = 0) {
       ${segments && segments.length > 0 ? `
         <div class="risk-segment-strip-section">
           <div class="risk-strip-header">
-            <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px">Corridor Risk Segments</span>
+            <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Corridor Risk Segments</span>
             <button class="risk-map-view-btn" onclick="window.highlightRiskZonesOnMap(${routeIndex})" title="Highlight colored hazard zones on map">
               🗺️ View on Map
             </button>
@@ -164,10 +164,10 @@ export function renderRiskPanel(data, routeIndex = 0) {
           <span style="font-size:16px;line-height:1.2">🛡️</span>
           <div style="flex:1">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
-              <span style="font-size:12px;font-weight:700;color:#f8fafc">SAFETY ADVISORY & FACTORS</span>
-              <span style="font-size:11px;color:#94a3b8">Model Confidence: <b style="color:var(--teal,#14b8a6)">${overallConfidence}%</b></span>
+              <span style="font-size:12px;font-weight:700;color:var(--text)">SAFETY ADVISORY & FACTORS</span>
+              <span style="font-size:11px;color:var(--muted)">Model Confidence: <b style="color:var(--teal,#14b8a6)">${overallConfidence}%</b></span>
             </div>
-            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;line-height:1.4">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4">
               ${escapeHtml(overallRecommendation)}
             </div>
             ${keyFactorsList.length > 0 ? `
@@ -219,22 +219,22 @@ window.inspectRiskSegment = function(routeIndex, segmentIndex) {
   const hist = seg.historicalContext || {};
 
   container.innerHTML = `
-    <div style="background:#0f172a;border:1px solid ${color}60;border-radius:8px;padding:10px;margin-top:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e293b;padding-bottom:6px">
+    <div style="background:var(--card);border:1px solid ${color}60;border-radius:8px;padding:10px;margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:6px">
         <b style="color:${color};font-size:12px">Segment ${segmentIndex + 1}: ${escapeHtml(seg.terrain || 'Corridor')} (${escapeHtml(seg.state || 'NER')})</b>
         <div style="display:flex;gap:6px;align-items:center">
           <span class="badge" style="background:${color}20;color:${color};border:1px solid ${color}60">${seg.riskLevel || 'LOW'} (${seg.riskScore || 0}%)</span>
-          <button onclick="document.getElementById('risk-segment-inspector-${routeIndex}').style.display='none'" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:14px">✕</button>
+          <button onclick="document.getElementById('risk-segment-inspector-${routeIndex}').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button>
         </div>
       </div>
-      <div style="font-size:11px;color:#cbd5e1;margin-top:6px;line-height:1.4">
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">
         <b>Primary Risk:</b> ${escapeHtml(seg.primaryHazardType || 'Weather')} — ${escapeHtml(seg.explanation || 'Normal conditions')}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px;font-size:10px;color:#94a3b8">
-        <div>🌧️ Forecast Precip: <b style="color:#f8fafc">${cond.forecast_24h_mm ?? 0} mm (${cond.precipitation_probability ?? 0}%)</b></div>
-        <div>🏔️ Landslide Corridor: <b style="color:#f8fafc">${escapeHtml(hist.landslideCorridor || 'No major corridor recorded')}</b></div>
-        <div>🌊 Flood Zone: <b style="color:#f8fafc">${escapeHtml(hist.floodZone || 'None recorded')}</b></div>
-        <div>🌡️ Temp & Humidity: <b style="color:#f8fafc">${cond.temperature || 'N/A'}, ${cond.humidity || 'N/A'}</b></div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px;font-size:10px;color:var(--muted)">
+        <div>🌧️ Forecast Precip: <b style="color:var(--text)">${cond.forecast_24h_mm ?? 0} mm (${cond.precipitation_probability ?? 0}%)</b></div>
+        <div>🏔️ Landslide Corridor: <b style="color:var(--text)">${escapeHtml(hist.landslideCorridor || 'No major corridor recorded')}</b></div>
+        <div>🌊 Flood Zone: <b style="color:var(--text)">${escapeHtml(hist.floodZone || 'None recorded')}</b></div>
+        <div>🌡️ Temp & Humidity: <b style="color:var(--text)">${cond.temperature || 'N/A'}, ${cond.humidity || 'N/A'}</b></div>
       </div>
       <div style="margin-top:8px;display:flex;justify-content:flex-end">
         <button class="btn primary" style="padding:3px 10px;font-size:11px" onclick="window.focusSegmentOnMap(${routeIndex}, ${segmentIndex})">

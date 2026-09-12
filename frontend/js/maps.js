@@ -39,10 +39,10 @@ const TYPE_COLOR = {
   hospital: '#ef4444',
   pharmacy: '#38bdf8',
   police: '#60a5fa',
-  gas_station: '#5eead4',
-  lodging: '#fb923c',
+  gas_station: 'var(--teal)',
+  lodging: 'var(--orange)',
   car_repair: '#fbbf24',
-  parking: '#94a3b8',
+  parking: 'var(--muted)',
   restaurant: '#a78bfa',
   restroom: '#2dd4bf'
 };
@@ -141,7 +141,7 @@ function createPinIcon(color, text) {
 function createFacilityIcon(color, symbol) {
   const html = `<div style="
     background:${color};
-    color:#040a12;
+    color:var(--bg);
     width:28px;
     height:28px;
     border-radius:50%;
@@ -301,11 +301,11 @@ export async function initMap(containerId = 'osm-map') {
         .setLatLng(e.latlng)
         .setContent(`
           <div style="font-family:Inter,sans-serif;padding:6px;max-width:220px">
-            <b style="color:#5eead4;font-size:12px">Selected Point</b>
-            <div style="color:#cbd5e1;font-size:11px;margin:4px 0">${escapeHtml(addr)}</div>
+            <b style="color:var(--teal);font-size:12px">Selected Point</b>
+            <div style="color:var(--muted);font-size:11px;margin:4px 0">${escapeHtml(addr)}</div>
             <div style="display:flex;gap:6px;margin-top:8px">
-              <button onclick="window.setMapLocationAs('origin', '${escapeHtml(addr)}', ${lat}, ${lng})" style="background:#14b8a6;color:#040a12;border:none;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer">Set as Origin</button>
-              <button onclick="window.setMapLocationAs('dest', '${escapeHtml(addr)}', ${lat}, ${lng})" style="background:#0f172a;color:#5eead4;border:1px solid #14b8a6;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer">Set as Dest</button>
+              <button onclick="window.setMapLocationAs('origin', '${escapeHtml(addr)}', ${lat}, ${lng})" style="background:#14b8a6;color:var(--bg);border:none;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer">Set as Origin</button>
+              <button onclick="window.setMapLocationAs('dest', '${escapeHtml(addr)}', ${lat}, ${lng})" style="background:var(--card);color:var(--teal);border:1px solid #14b8a6;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer">Set as Dest</button>
             </div>
           </div>
         `)
@@ -409,20 +409,20 @@ export function displayRoute(route) {
     const endCoord = coords[coords.length - 1];
 
     originMarker = L.marker([startCoord[1], startCoord[0]], {
-      icon: createPinIcon('#5eead4', 'A')
+      icon: createPinIcon('var(--teal)', 'A')
     }).addTo(map).bindPopup(`
       <div style="font-family:Inter,sans-serif">
-        <b style="color:#5eead4;font-size:12px">Origin:</b>
-        <div style="color:#f8fafc;font-size:12px;margin-top:2px">${escapeHtml(route.startAddress || state.origin)}</div>
+        <b style="color:var(--teal);font-size:12px">Origin:</b>
+        <div style="color:var(--text);font-size:12px;margin-top:2px">${escapeHtml(route.startAddress || state.origin)}</div>
       </div>
     `);
 
     destinationMarker = L.marker([endCoord[1], endCoord[0]], {
-      icon: createPinIcon('#34d399', 'B')
+      icon: createPinIcon('var(--green)', 'B')
     }).addTo(map).bindPopup(`
       <div style="font-family:Inter,sans-serif">
-        <b style="color:#34d399;font-size:12px">Destination:</b>
-        <div style="color:#f8fafc;font-size:12px;margin-top:2px">${escapeHtml(route.endAddress || state.destination)}</div>
+        <b style="color:var(--green);font-size:12px">Destination:</b>
+        <div style="color:var(--text);font-size:12px;margin-top:2px">${escapeHtml(route.endAddress || state.destination)}</div>
       </div>
     `);
   }
@@ -512,27 +512,27 @@ export function addFacilityMarkers(facilities) {
         : (typeof distanceMeters === 'function' ? distanceMeters(state.userLocation.lat, state.userLocation.lng, f.coordinates.lat, f.coordinates.lng) : null);
       if (dMeters != null) {
         const uText = dMeters >= 1000 ? `${(dMeters / 1000).toFixed(1)} km` : `${Math.round(dMeters)} m`;
-        userGpsBadge = `<div style="color:#38bdf8;font-size:11px;margin-top:4px;font-weight:600">📡 ${uText} from your GPS location</div>`;
+        userGpsBadge = `<div style="color:#0284c7;font-size:11px;margin-top:4px;font-weight:600">📡 ${uText} from your GPS location</div>`;
       }
     }
 
     const details = [];
-    if (f.brand) details.push(`<span style="color:#5eead4">Brand: ${escapeHtml(f.brand)}</span>`);
-    if (f.openingHours) details.push(`<span style="color:#cbd5e1">Hours: ${escapeHtml(f.openingHours)}</span>`);
-    if (f.phone) details.push(`<span style="color:#cbd5e1">Phone: ${escapeHtml(f.phone)}</span>`);
-    if (f.website) details.push(`<a href="${escapeHtml(f.website)}" target="_blank" style="color:#5eead4">Website ↗</a>`);
+    if (f.brand) details.push(`<span style="color:var(--teal)">Brand: ${escapeHtml(f.brand)}</span>`);
+    if (f.openingHours) details.push(`<span style="color:var(--muted)">Hours: ${escapeHtml(f.openingHours)}</span>`);
+    if (f.phone) details.push(`<span style="color:var(--muted)">Phone: ${escapeHtml(f.phone)}</span>`);
+    if (f.website) details.push(`<a href="${escapeHtml(f.website)}" target="_blank" style="color:var(--teal)">Website ↗</a>`);
 
     const popupContent = `
       <div style="font-family:Inter,sans-serif;min-width:220px;max-width:280px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <strong style="font-size:14px;color:#f8fafc;line-height:1.3">${escapeHtml(f.name)}</strong>
+          <strong style="font-size:14px;color:var(--text);line-height:1.3">${escapeHtml(f.name)}</strong>
           <span style="font-size:10px;font-weight:bold;background:${color}22;color:${color};border:1px solid ${color}44;padding:2px 6px;border-radius:4px;white-space:nowrap">${escapeHtml(label)}</span>
         </div>
-        <div style="color:#94a3b8;font-size:11px;margin-top:6px;line-height:1.4">${escapeHtml(f.address)}</div>
-        <div style="color:#5eead4;font-size:11px;margin-top:4px">📍 ${distText} off route corridor</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:6px;line-height:1.4">${escapeHtml(f.address)}</div>
+        <div style="color:var(--teal);font-size:11px;margin-top:4px">📍 ${distText} off route corridor</div>
         ${details.length > 0 ? `<div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid #ffffff15;display:flex;flex-direction:column;gap:3px">${details.join('')}</div>` : ''}
         <div style="margin-top:12px">
-          <button onclick="window.getDirectionsToFacility('${f.placeId || f.id}')" style="background:#14b8a6;color:#040a12;border:none;width:100%;padding:7px 12px;border-radius:6px;font-weight:bold;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+          <button onclick="window.getDirectionsToFacility('${f.placeId || f.id}')" style="background:#14b8a6;color:var(--bg);border:none;width:100%;padding:7px 12px;border-radius:6px;font-weight:bold;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
             <span>🧭</span> Get Directions
           </button>
         </div>
@@ -637,20 +637,20 @@ export async function displayFacilityRoute(facility, forceMode = null) {
   const popupHtml = `
     <div style="font-family:Inter,sans-serif;min-width:240px;max-width:300px;padding:4px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-        <strong style="font-size:14px;color:#f8fafc;line-height:1.3">${escapeHtml(facility.name)}</strong>
+        <strong style="font-size:14px;color:var(--text);line-height:1.3">${escapeHtml(facility.name)}</strong>
         <span style="font-size:10px;font-weight:bold;background:${color}22;color:${color};border:1px solid ${color}44;padding:2px 6px;border-radius:4px;white-space:nowrap">${escapeHtml(label)}</span>
       </div>
-      <div style="color:#94a3b8;font-size:11px;margin-top:6px;line-height:1.4">${escapeHtml(facility.address || 'Along route corridor')}</div>
-      <div style="color:#38bdf8;font-size:11px;margin-top:4px;font-weight:600">
+      <div style="color:var(--muted);font-size:11px;margin-top:6px;line-height:1.4">${escapeHtml(facility.address || 'Along route corridor')}</div>
+      <div style="color:#0284c7;font-size:11px;margin-top:4px;font-weight:600">
         📍 ${directDistText} from ${escapeHtml(startLabel)}
       </div>
       <div style="margin-top:10px;display:flex;gap:6px;flex-direction:column">
         ${(state.origin && state.destination) ? `
-          <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:#040a12;border:none;width:100%;padding:6px 10px;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer">
+          <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:var(--bg);border:none;width:100%;padding:6px 10px;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer">
             + Add as Waypoint to Trip
           </button>
         ` : ''}
-        <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:#1e293b;color:#38bdf8;border:1px solid #38bdf844;padding:6px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:4px">
+        <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:var(--border);color:#0284c7;border:1px solid #0284c744;padding:6px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:4px">
           ↗ Open in Google Maps
         </a>
       </div>
@@ -665,7 +665,7 @@ export async function displayFacilityRoute(facility, forceMode = null) {
   }
 
   const startPinText = isUserGps ? 'ME' : 'A';
-  const startColor = isUserGps ? '#38bdf8' : '#5eead4';
+  const startColor = isUserGps ? '#38bdf8' : 'var(--teal)';
 
   facilityStartMarker = L.marker([startLat, startLng], {
     icon: createPinIcon(startColor, startPinText),
@@ -675,8 +675,8 @@ export async function displayFacilityRoute(facility, forceMode = null) {
   facilityStartMarker.bindPopup(`
     <div style="font-family:Inter,sans-serif;padding:4px">
       <b style="color:${startColor};font-size:13px">📍 ${escapeHtml(startLabel)}</b>
-      <div style="color:#cbd5e1;font-size:11px;margin-top:4px">Coordinates: ${startLat.toFixed(4)}, ${startLng.toFixed(4)}</div>
-      <div style="color:#94a3b8;font-size:10px;margin-top:2px">Departure point for facility directions</div>
+      <div style="color:var(--muted);font-size:11px;margin-top:4px">Coordinates: ${startLat.toFixed(4)}, ${startLng.toFixed(4)}</div>
+      <div style="color:var(--muted);font-size:10px;margin-top:2px">Departure point for facility directions</div>
     </div>
   `);
 
@@ -741,7 +741,7 @@ export async function displayFacilityRoute(facility, forceMode = null) {
 
   detourRouteLayer = L.geoJSON(route.geometry, {
     style: {
-      color: '#fb923c',
+      color: 'var(--orange)',
       weight: 6,
       opacity: 0.95,
       lineCap: 'round',
@@ -775,31 +775,31 @@ export async function displayFacilityRoute(facility, forceMode = null) {
     infoEl.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <div>
-          <b style="color:#fb923c;font-size:12px">${symbol} Directions to ${escapeHtml(facility.name)}</b>
-          <div style="color:#cbd5e1;font-size:11px;margin-top:2px">
+          <b style="color:var(--orange);font-size:12px">${symbol} Directions to ${escapeHtml(facility.name)}</b>
+          <div style="color:var(--muted);font-size:11px;margin-top:2px">
             From: <span style="color:${startColor};font-weight:600">${escapeHtml(startLabel)}</span>
           </div>
-          <div style="color:#5eead4;font-size:11px;margin-top:2px;font-weight:600">
+          <div style="color:var(--teal);font-size:11px;margin-top:2px;font-weight:600">
             📏 ${distText} · ⏱️ ${durText}
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
           ${isUserGps && state.selectedRoute?.origin?.lat ? `
-            <button onclick="window.routeFacilityFrom('origin')" style="background:#0f172a;color:#cbd5e1;border:1px solid #334155;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px" title="Show directions from trip origin instead">
+            <button onclick="window.routeFacilityFrom('origin')" style="background:var(--card);color:var(--muted);border:1px solid #334155;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px" title="Show directions from trip origin instead">
               Trip Origin
             </button>
           ` : (!isUserGps && state.userLocation?.lat ? `
-            <button onclick="window.routeFacilityFrom('gps')" style="background:#0f172a;color:#38bdf8;border:1px solid #38bdf844;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px" title="Show directions from your current GPS location">
+            <button onclick="window.routeFacilityFrom('gps')" style="background:var(--card);color:#0284c7;border:1px solid #0284c744;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px" title="Show directions from your current GPS location">
               📡 My GPS
             </button>
           ` : '')}
-          <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:#040a12;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold" title="Route: Origin -> Facility -> Final Destination">
+          <button onclick="window.continueWithFacilityWaypoint()" style="background:#14b8a6;color:var(--bg);border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold" title="Route: Origin -> Facility -> Final Destination">
             + Waypoint
           </button>
-          <button onclick="window.returnToMainRoute()" style="background:#0f172a;color:#5eead4;border:1px solid #14b8a6;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold">
+          <button onclick="window.returnToMainRoute()" style="background:var(--card);color:var(--teal);border:1px solid #14b8a6;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold">
             ✕ Exit
           </button>
-          <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:#1e293b;color:#38bdf8;border:1px solid #38bdf844;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:inline-flex;align-items:center;gap:4px">
+          <a href="https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLng}&destination=${destLat},${destLng}" target="_blank" rel="noopener noreferrer" style="background:var(--border);color:#0284c7;border:1px solid #0284c744;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:bold;display:inline-flex;align-items:center;gap:4px">
             ↗ Google Maps
           </a>
         </div>
@@ -814,13 +814,13 @@ export async function displayFacilityRoute(facility, forceMode = null) {
       listEl.innerHTML = steps.map((step, idx) => {
         const stepText = typeof step === 'string' ? step : (step.name ? `${idx + 1}. Continue onto ${step.name}` : `${idx + 1}. Continue`);
         return `
-          <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #ffffff10;font-size:11px;color:#e2e8f0">
+          <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #ffffff10;font-size:11px;color:var(--text)">
             <span>${escapeHtml(stepText)}</span>
           </div>
         `;
       }).join('');
     } else {
-      listEl.innerHTML = `<div style="color:#94a3b8;font-size:11px">Head towards ${escapeHtml(facility.name)} on highway corridor.</div>`;
+      listEl.innerHTML = `<div style="color:var(--muted);font-size:11px">Head towards ${escapeHtml(facility.name)} on highway corridor.</div>`;
     }
   }
 }
@@ -860,10 +860,10 @@ export async function continueWithFacilityWaypoint() {
         infoEl.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
             <div>
-              <b style="color:#5eead4">Multi-stop Journey via ${escapeHtml(state.selectedFacility.name)}</b>
-              <div style="color:#cbd5e1;font-size:11px">Total: ${data.route.distance} · ${data.route.duration}</div>
+              <b style="color:var(--teal)">Multi-stop Journey via ${escapeHtml(state.selectedFacility.name)}</b>
+              <div style="color:var(--muted);font-size:11px">Total: ${data.route.distance} · ${data.route.duration}</div>
             </div>
-            <button onclick="window.returnToMainRoute()" style="background:#0f172a;color:#5eead4;border:1px solid #14b8a6;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold">
+            <button onclick="window.returnToMainRoute()" style="background:var(--card);color:var(--teal);border:1px solid #14b8a6;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold">
               ← Return to Direct Route
             </button>
           </div>
@@ -1101,9 +1101,9 @@ export function addAlertMarkers(alerts) {
 
   const SEV_COLOR = {
     CRITICAL: '#ef4444',
-    HIGH: '#fb923c',
+    HIGH: 'var(--orange)',
     MEDIUM: '#fbbf24',
-    LOW: '#94a3b8'
+    LOW: 'var(--muted)'
   };
 
   alerts.forEach(alert => {
@@ -1115,7 +1115,7 @@ export function addAlertMarkers(alerts) {
     }
     if (!latLng) return;
 
-    const color = SEV_COLOR[alert.severity] || '#fb923c';
+    const color = SEV_COLOR[alert.severity] || 'var(--orange)';
     const marker = L.circleMarker(latLng, {
       radius: 7,
       fillColor: color,
@@ -1127,8 +1127,8 @@ export function addAlertMarkers(alerts) {
     marker.bindPopup(`
       <div style="font-family:Inter,sans-serif;max-width:240px">
         <b style="color:${color};font-size:12px">${escapeHtml(alert.severity)}: ${escapeHtml(alert.title)}</b>
-        <div style="color:#94a3b8;font-size:11px;margin-top:4px">${escapeHtml(alert.location || alert.state)}</div>
-        ${alert.description ? `<p style="font-size:11px;color:#cbd5e1;margin-top:6px;line-height:1.4">${escapeHtml(alert.description)}</p>` : ''}
+        <div style="color:var(--muted);font-size:11px;margin-top:4px">${escapeHtml(alert.location || alert.state)}</div>
+        ${alert.description ? `<p style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">${escapeHtml(alert.description)}</p>` : ''}
       </div>
     `);
 
@@ -1260,17 +1260,17 @@ export function displayRiskZoneOverlay(segments) {
             ${seg.riskLevel} (${seg.riskScore}%)
           </span>
         </div>
-        <div style="margin-top:6px;font-size:11px;color:#f8fafc;font-weight:600">
+        <div style="margin-top:6px;font-size:11px;color:var(--text);font-weight:600">
           ${escapeHtml(seg.primaryHazardType)} Risk
         </div>
-        <div style="margin-top:2px;font-size:11px;color:#cbd5e1;line-height:1.35">
+        <div style="margin-top:2px;font-size:11px;color:var(--muted);line-height:1.35">
           ${escapeHtml(seg.explanation)}
         </div>
-        <div style="margin-top:6px;padding-top:4px;border-top:1px solid #1e293b;font-size:10px;color:#94a3b8">
-          <div>🌧️ Precip: <b style="color:#f8fafc">${seg.currentConditions?.forecast_24h_mm || 0}mm (${seg.currentConditions?.precipitation_probability || 0}%)</b></div>
-          <div>🏔️ Terrain: <b style="color:#f8fafc">${escapeHtml(seg.terrain || 'N/A')}</b></div>
-          <div>📍 State: <b style="color:#f8fafc">${escapeHtml(seg.state || 'NER')}</b></div>
-          <div style="margin-top:4px;color:#64748b;font-size:9px">Source: ${escapeHtml(seg.currentConditions?.weatherDataSource || 'Open-Meteo')}</div>
+        <div style="margin-top:6px;padding-top:4px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)">
+          <div>🌧️ Precip: <b style="color:var(--text)">${seg.currentConditions?.forecast_24h_mm || 0}mm (${seg.currentConditions?.precipitation_probability || 0}%)</b></div>
+          <div>🏔️ Terrain: <b style="color:var(--text)">${escapeHtml(seg.terrain || 'N/A')}</b></div>
+          <div>📍 State: <b style="color:var(--text)">${escapeHtml(seg.state || 'NER')}</b></div>
+          <div style="margin-top:4px;color:var(--muted);font-size:9px">Source: ${escapeHtml(seg.currentConditions?.weatherDataSource || 'Open-Meteo')}</div>
         </div>
       </div>
     `;
@@ -1297,7 +1297,7 @@ export function focusOnSegment(seg) {
         .setContent(`
           <div style="font-family:Inter,sans-serif;padding:6px;max-width:240px">
             <b style="color:${seg.color};font-size:12px">${escapeHtml(seg.name)}: ${seg.riskLevel} (${seg.riskScore}%)</b>
-            <div style="font-size:11px;color:#cbd5e1;margin-top:4px">${escapeHtml(seg.explanation)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">${escapeHtml(seg.explanation)}</div>
           </div>
         `)
         .openOn(map);

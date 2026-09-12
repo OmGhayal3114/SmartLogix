@@ -37,7 +37,7 @@ export function renderLivePage() {
 
   const r = state.selectedRoute;
   const risk = r.risk || state.mlRisk;
-  const riskColor = risk ? (RISK_COLORS[risk.risk] || 'var(--teal)') : '#64748b';
+  const riskColor = risk ? (RISK_COLORS[risk.risk] || 'var(--teal)') : 'var(--muted)';
   const riskBg = risk ? (RISK_BG[risk.risk] || '#ffffff08') : '#ffffff08';
 
   return `
@@ -51,15 +51,15 @@ export function renderLivePage() {
     </div>
 
     <!-- OpenStreetMap Leaflet interactive container -->
-    <div id="osm-map" style="height:480px;border-radius:12px;border:1px solid #2dd4bf26;background:#040a12;position:relative;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.6);z-index:0">
-      <div style="position:absolute;left:14px;bottom:14px;z-index:500;background:#07111fee;border:1px solid #2dd4bf44;border-radius:8px;padding:10px 14px;color:#cbd5e1;font-size:11px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,0.5)">
+    <div id="osm-map" style="height:480px;border-radius:12px;border:1px solid #2dd4bf26;background:var(--bg);position:relative;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.6);z-index:0">
+      <div style="position:absolute;left:14px;bottom:14px;z-index:500;background:var(--card);border:1px solid #2dd4bf44;border-radius:8px;padding:10px 14px;color:var(--muted);font-size:11px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,0.5)">
         <div id="location-status" style="font-weight:500">Live GPS ready</div>
         <div style="margin-top:6px;display:flex;justify-content:space-between;gap:12px">
-          <span>Remaining: <b id="remaining-distance" style="color:#ffffff">${state.remainingDistance || '—'}</b></span>
-          <span style="color:var(--teal)">ETA: <b id="remaining-eta" style="color:#5eead4">${state.remainingDuration || '—'}</b></span>
+          <span>Remaining: <b id="remaining-distance" style="color:var(--text)">${state.remainingDistance || '—'}</b></span>
+          <span style="color:var(--teal)">ETA: <b id="remaining-eta" style="color:var(--teal)">${state.remainingDuration || '—'}</b></span>
         </div>
         <div id="facility-direction-info" style="margin-top:8px"></div>
-        <div id="facility-directions-list" style="margin-top:6px;max-height:140px;overflow-y:auto;color:#e2e8f0"></div>
+        <div id="facility-directions-list" style="margin-top:6px;max-height:140px;overflow-y:auto;color:var(--text)"></div>
       </div>
     </div>
 
@@ -78,7 +78,7 @@ export function renderLivePage() {
         </div>
 
         ${state.routes && state.routes.length > 1 ? `
-          <div style="margin-top:14px;padding:12px;border-radius:8px;background:#0c1524;border:1px solid #1e293b">
+          <div style="margin-top:14px;padding:12px;border-radius:8px;background:var(--card);border:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
               <span style="font-size:11px;font-weight:600;color:var(--teal)">AVAILABLE CORRIDORS</span>
               <span class="muted" style="font-size:10px">${state.routes.length} options</span>
@@ -88,10 +88,10 @@ export function renderLivePage() {
                 const isActive = rt === r || (rt.summary === r.summary && rt.distance === r.distance);
                 const rtRisk = rt.risk?.score ? `${rt.risk.score}% ${rt.risk.risk}` : '';
                 return `
-                  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:6px;background:${isActive ? '#10b98118' : '#07101e'};border:1px solid ${isActive ? '#10b98155' : '#1e293b'}">
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:6px;background:${isActive ? '#10b98118' : '#07101e'};border:1px solid ${isActive ? '#10b98155' : 'var(--border)'}">
                     <div style="font-size:11px">
-                      <b style="color:${isActive ? '#5eead4' : '#e2e8f0'}">${esc(rt.summary)}</b>
-                      <div class="muted" style="font-size:10px">${esc(rt.distance)} · ${esc(rt.duration)}${rtRisk ? ` · <span style="color:${rt.risk?.risk === 'HIGH' ? '#f87171' : '#34d399'}">${esc(rtRisk)}</span>` : ''}</div>
+                      <b style="color:${isActive ? 'var(--teal)' : 'var(--text)'}">${esc(rt.summary)}</b>
+                      <div class="muted" style="font-size:10px">${esc(rt.distance)} · ${esc(rt.duration)}${rtRisk ? ` · <span style="color:${rt.risk?.risk === 'HIGH' ? '#f87171' : 'var(--green)'}">${esc(rtRisk)}</span>` : ''}</div>
                     </div>
                     ${isActive
                       ? `<span class="badge success" style="font-size:10px">Active</span>`
@@ -105,15 +105,15 @@ export function renderLivePage() {
         ` : ''}
 
         <!-- Unified ML Route Risk Intelligence Panel -->
-        <div style="margin-top:20px;padding:16px;border-radius:10px;background:#090e17;border:1px solid #1e293b">
+        <div style="margin-top:20px;padding:16px;border-radius:10px;background:var(--card);border:1px solid var(--border)">
           ${state.loadingRisk
             ? `<div style="color:var(--muted)">${t('live.loadingRisk')}</div>`
             : risk
             ? `
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:6px">
-                  <span style="color:#5eead4;font-size:14px">⚡</span>
-                  <span style="font-size:11px;font-weight:700;letter-spacing:0.8px;color:#cbd5e1">ROUTE RISK INTELLIGENCE</span>
+                  <span style="color:var(--teal);font-size:14px">⚡</span>
+                  <span style="font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--muted)">ROUTE RISK INTELLIGENCE</span>
                   <span class="risk-badge-proto">PROTOTYPE — ESTIMATED RISK</span>
                 </div>
                 <div class="risk-overall-chip" style="background:${riskColor}20;border:1px solid ${riskColor}60;color:${riskColor}">
@@ -125,42 +125,42 @@ export function renderLivePage() {
 
               ${risk.factors ? `
                 <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
-                  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px">
+                  <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px">
                     <div style="display:flex;justify-content:space-between;font-size:11px">
                       <span>🌧️ Rain</span>
                       <b style="color:${risk.factors.rain.level === 'HIGH' || risk.factors.rain.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}">${risk.factors.rain.score}%</b>
                     </div>
                     <div class="risk-bar-track" style="margin:4px 0"><div class="risk-bar-fill" style="width:${risk.factors.rain.score}%;background:${risk.factors.rain.level === 'HIGH' || risk.factors.rain.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}"></div></div>
-                    <div style="font-size:9px;color:#94a3b8">${esc(risk.factors.rain.level)}</div>
+                    <div style="font-size:9px;color:var(--muted)">${esc(risk.factors.rain.level)}</div>
                   </div>
-                  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px">
+                  <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px">
                     <div style="display:flex;justify-content:space-between;font-size:11px">
                       <span>🏔️ Landslide</span>
                       <b style="color:${risk.factors.landslide.level === 'HIGH' || risk.factors.landslide.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}">${risk.factors.landslide.score}%</b>
                     </div>
                     <div class="risk-bar-track" style="margin:4px 0"><div class="risk-bar-fill" style="width:${risk.factors.landslide.score}%;background:${risk.factors.landslide.level === 'HIGH' || risk.factors.landslide.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}"></div></div>
-                    <div style="font-size:9px;color:#94a3b8">${esc(risk.factors.landslide.level)}</div>
+                    <div style="font-size:9px;color:var(--muted)">${esc(risk.factors.landslide.level)}</div>
                   </div>
-                  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px">
+                  <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px">
                     <div style="display:flex;justify-content:space-between;font-size:11px">
                       <span>🌊 Flood</span>
                       <b style="color:${risk.factors.flood.level === 'HIGH' || risk.factors.flood.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}">${risk.factors.flood.score}%</b>
                     </div>
                     <div class="risk-bar-track" style="margin:4px 0"><div class="risk-bar-fill" style="width:${risk.factors.flood.score}%;background:${risk.factors.flood.level === 'HIGH' || risk.factors.flood.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}"></div></div>
-                    <div style="font-size:9px;color:#94a3b8">${esc(risk.factors.flood.level)}</div>
+                    <div style="font-size:9px;color:var(--muted)">${esc(risk.factors.flood.level)}</div>
                   </div>
-                  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px">
+                  <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px">
                     <div style="display:flex;justify-content:space-between;font-size:11px">
                       <span>🚗 Traffic</span>
                       <b style="color:${risk.factors.traffic.level === 'HIGH' || risk.factors.traffic.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}">${risk.factors.traffic.score}%</b>
                     </div>
                     <div class="risk-bar-track" style="margin:4px 0"><div class="risk-bar-fill" style="width:${risk.factors.traffic.score}%;background:${risk.factors.traffic.level === 'HIGH' || risk.factors.traffic.level === 'VERY HIGH' ? 'var(--orange)' : 'var(--green)'}"></div></div>
-                    <div style="font-size:9px;color:#94a3b8">${esc(risk.factors.traffic.level)}</div>
+                    <div style="font-size:9px;color:var(--muted)">${esc(risk.factors.traffic.level)}</div>
                   </div>
                 </div>
               ` : ''}
 
-              <div style="background:#0c1424;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;font-size:11px;color:#cbd5e1;line-height:1.4">
+              <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--muted);line-height:1.4">
                 <b>Safety Advisory:</b> ${esc(risk.recommendation || 'Drive with standard highway precautions.')}
               </div>
 
@@ -170,7 +170,7 @@ export function renderLivePage() {
                 </div>
               ` : ''}
 
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:10px;color:#64748b">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:10px;color:var(--muted)">
                 <span>Open-Meteo Weather · IMD Climatology · GSI Zonation</span>
                 ${risk.confidencePct ? `<span>Confidence: <b style="color:var(--teal)">${risk.confidencePct}%</b></span>` : ''}
               </div>
